@@ -78,12 +78,10 @@ public class ElementInstanceState {
     this.keyBuffer = new ExpandableArrayBuffer();
     this.valueBuffer = new ExpandableArrayBuffer();
 
-    elementParentChildHandle =
-        rocksDbWrapper.getColumnFamilyHandle(ELEMENT_PARENT_CHILD_KEY_FAMILY_NAME);
-    elementInstanceHandle = rocksDbWrapper.getColumnFamilyHandle(ELEMENT_INSTANCE_KEY_FAMILY_NAME);
-    tokenEventHandle = rocksDbWrapper.getColumnFamilyHandle(TOKEN_EVENTS_KEY_FAMILY_NAME);
-    tokenParentChildHandle =
-        rocksDbWrapper.getColumnFamilyHandle(TOKEN_PARENT_CHILD_KEY_FAMILY_NAME);
+    elementParentChildHandle = rocksDbWrapper.getState(ELEMENT_PARENT_CHILD_KEY_FAMILY_NAME);
+    elementInstanceHandle = rocksDbWrapper.getState(ELEMENT_INSTANCE_KEY_FAMILY_NAME);
+    tokenEventHandle = rocksDbWrapper.getState(TOKEN_EVENTS_KEY_FAMILY_NAME);
+    tokenParentChildHandle = rocksDbWrapper.getState(TOKEN_PARENT_CHILD_KEY_FAMILY_NAME);
   }
 
   public ElementInstance newInstance(

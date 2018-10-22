@@ -17,7 +17,7 @@
  */
 package io.zeebe.broker.logstreams.processor;
 
-import io.zeebe.broker.util.KeyStateController;
+import io.zeebe.broker.util.KeyState;
 import io.zeebe.msgpack.UnpackedObject;
 import io.zeebe.msgpack.property.LongProperty;
 import io.zeebe.protocol.Protocol;
@@ -35,36 +35,33 @@ public class KeyGenerator extends UnpackedObject {
 
   private final LongProperty nextKey;
   private final int stepSize;
-  private final KeyStateController keyStateController;
+  private final KeyState keyState;
 
   public KeyGenerator(int partitionId, final long initialValue, final int stepSize) {
     this(partitionId, initialValue, stepSize, null);
   }
 
   public KeyGenerator(
-      int partitionId,
-      final long initialValue,
-      final int stepSize,
-      final KeyStateController keyStateController) {
+      int partitionId, final long initialValue, final int stepSize, final KeyState keyState) {
     long startValue = (long) partitionId << Protocol.KEY_BITS;
     startValue += initialValue;
 
     nextKey = new LongProperty("nextKey", startValue);
     this.stepSize = stepSize;
     declareProperty(nextKey);
-    this.keyStateController = keyStateController;
+    this.keyState = keyState;
     init(startValue);
   }
 
   private void init(long initialValue) {
-    if (keyStateController != null) {
-      keyStateController.addOnOpenCallback(
+    if (keyState != null) {
+      keyState.addOnOpenCallback(
           () -> {
-            final long latestKey = keyStateController.getNextKey();
+            final long latestKey = keyState.getNextKey();
             if (latestKey > 0) {
               setKey(latestKey);
             } else {
-              keyStateController.putNextKey(initialValue);
+              keyState.putNextKey(initialValue);
             }
           });
     }
@@ -84,27 +81,25 @@ public class KeyGenerator extends UnpackedObject {
   }
 
   private void putLatestKeyIntoController(final long key) {
-    if (keyStateController != null) {
-      keyStateController.putNextKey(key);
+    if (keyState != null) {
+      keyState.putNextKey(key);
     }
   }
 
   public static KeyGenerator createWorkflowInstanceKeyGenerator(
-      int partitionId, final KeyStateController controller) {
+      int partitionId, final KeyState controller) {
     return new KeyGenerator(partitionId, WF_OFFSET, STEP_SIZE, controller);
   }
 
-  public static KeyGenerator createJobKeyGenerator(
-      int partitionId, final KeyStateController keyStateController) {
-    return new KeyGenerator(partitionId, JOB_OFFSET, STEP_SIZE, keyStateController);
+  public static KeyGenerator createJobKeyGenerator(int partitionId, final KeyState keyState) {
+    return new KeyGenerator(partitionId, JOB_OFFSET, STEP_SIZE, keyState);
   }
 
   public static KeyGenerator createIncidentKeyGenerator(int partitionId) {
     return new KeyGenerator(partitionId, INCIDENT_OFFSET, STEP_SIZE);
   }
 
-  public static KeyGenerator createMessageKeyGenerator(
-      int partitionId, KeyStateController keyStateController) {
-    return new KeyGenerator(partitionId, MESSAGE_OFFSET, STEP_SIZE, keyStateController);
+  public static KeyGenerator createMessageKeyGenerator(int partitionId, KeyState keyState) {
+    return new KeyGenerator(partitionId, MESSAGE_OFFSET, STEP_SIZE, keyState);
   }
 }

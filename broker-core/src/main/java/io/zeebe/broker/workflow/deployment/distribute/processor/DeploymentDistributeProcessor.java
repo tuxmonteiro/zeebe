@@ -26,7 +26,7 @@ import io.zeebe.broker.logstreams.processor.TypedResponseWriter;
 import io.zeebe.broker.logstreams.processor.TypedStreamProcessor;
 import io.zeebe.broker.logstreams.processor.TypedStreamWriter;
 import io.zeebe.broker.system.configuration.ClusterCfg;
-import io.zeebe.broker.workflow.deployment.distribute.processor.state.DeploymentsStateController;
+import io.zeebe.broker.workflow.deployment.distribute.processor.state.DeploymentsState;
 import io.zeebe.logstreams.log.LogStreamWriterImpl;
 import io.zeebe.protocol.clientapi.RecordType;
 import io.zeebe.protocol.clientapi.ValueType;
@@ -45,7 +45,7 @@ public class DeploymentDistributeProcessor implements TypedRecordProcessor<Deplo
   private final TopologyManager topologyManager;
   private final LogStreamWriterImpl logStreamWriter;
   private final ClientTransport managementApi;
-  private final DeploymentsStateController deploymentsStateController;
+  private final DeploymentsState deploymentsStateController;
   private final ClusterCfg clusterCfg;
 
   private ActorControl actor;
@@ -56,7 +56,7 @@ public class DeploymentDistributeProcessor implements TypedRecordProcessor<Deplo
   public DeploymentDistributeProcessor(
       final ClusterCfg clusterCfg,
       final TopologyManager topologyManager,
-      final DeploymentsStateController deploymentsStateController,
+      final DeploymentsState deploymentsStateController,
       final ClientTransport managementClient,
       final LogStreamWriterImpl logStreamWriter) {
     this.clusterCfg = clusterCfg;

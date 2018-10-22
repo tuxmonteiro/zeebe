@@ -22,7 +22,7 @@ import static io.zeebe.util.EnsureUtil.ensureLessThanOrEqual;
 import static io.zeebe.util.EnsureUtil.ensureNotNull;
 import static io.zeebe.util.EnsureUtil.ensureNotNullOrEmpty;
 
-import io.zeebe.broker.job.JobStateController;
+import io.zeebe.broker.job.JobState;
 import io.zeebe.broker.job.old.JobSubscriptions.SubscriptionIterator;
 import io.zeebe.broker.logstreams.processor.StreamProcessorLifecycleAware;
 import io.zeebe.broker.logstreams.processor.TypedCommandWriter;
@@ -50,13 +50,13 @@ public class JobSubscriptionProcessor
   private final Map<Long, JobSubscriptions> keySubscriptions = new Long2ObjectHashMap<>();
   private final CreditsRequestBuffer creditsBuffer =
       new CreditsRequestBuffer(JobSubscriptionManager.NUM_CONCURRENT_REQUESTS);
-  private final JobStateController state;
+  private final JobState state;
 
   private ActorControl actor;
   private ChannelSubscription creditsSubscription;
   private TypedCommandWriter writer;
 
-  public JobSubscriptionProcessor(JobStateController state) {
+  public JobSubscriptionProcessor(JobState state) {
     this.state = state;
   }
 

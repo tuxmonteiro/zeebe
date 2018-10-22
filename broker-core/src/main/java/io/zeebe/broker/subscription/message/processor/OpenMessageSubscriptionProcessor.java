@@ -25,7 +25,7 @@ import io.zeebe.broker.logstreams.processor.TypedStreamWriter;
 import io.zeebe.broker.subscription.command.SubscriptionCommandSender;
 import io.zeebe.broker.subscription.message.data.MessageSubscriptionRecord;
 import io.zeebe.broker.subscription.message.state.Message;
-import io.zeebe.broker.subscription.message.state.MessageStateController;
+import io.zeebe.broker.subscription.message.state.MessageState;
 import io.zeebe.broker.subscription.message.state.MessageSubscription;
 import io.zeebe.protocol.clientapi.RejectionType;
 import io.zeebe.protocol.intent.MessageSubscriptionIntent;
@@ -37,7 +37,7 @@ import org.agrona.concurrent.UnsafeBuffer;
 public class OpenMessageSubscriptionProcessor
     implements TypedRecordProcessor<MessageSubscriptionRecord> {
 
-  private final MessageStateController messageStateController;
+  private final MessageState messageStateController;
   private final SubscriptionCommandSender commandSender;
 
   private final DirectBuffer messagePayload = new UnsafeBuffer(0, 0);
@@ -45,7 +45,7 @@ public class OpenMessageSubscriptionProcessor
   private MessageSubscriptionRecord subscriptionRecord;
 
   public OpenMessageSubscriptionProcessor(
-      MessageStateController messageStateController, SubscriptionCommandSender commandSender) {
+      MessageState messageStateController, SubscriptionCommandSender commandSender) {
     this.messageStateController = messageStateController;
     this.commandSender = commandSender;
   }

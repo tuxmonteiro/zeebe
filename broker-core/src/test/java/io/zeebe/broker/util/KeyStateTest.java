@@ -24,15 +24,15 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class KeyStateControllerTest {
+public class KeyStateTest {
 
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
-  private KeyStateController stateController;
+  private KeyState stateController;
 
   @Before
   public void setUp() throws Exception {
-    stateController = new KeyStateController();
+    stateController = new KeyState();
     stateController.open(folder.newFolder("rocksdb"), false);
   }
 

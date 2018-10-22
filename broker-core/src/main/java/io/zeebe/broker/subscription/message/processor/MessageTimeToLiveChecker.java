@@ -19,7 +19,7 @@ package io.zeebe.broker.subscription.message.processor;
 
 import io.zeebe.broker.logstreams.processor.TypedCommandWriter;
 import io.zeebe.broker.subscription.message.state.Message;
-import io.zeebe.broker.subscription.message.state.MessageStateController;
+import io.zeebe.broker.subscription.message.state.MessageState;
 import io.zeebe.protocol.impl.record.value.message.MessageRecord;
 import io.zeebe.protocol.intent.MessageIntent;
 import io.zeebe.util.sched.clock.ActorClock;
@@ -27,12 +27,11 @@ import io.zeebe.util.sched.clock.ActorClock;
 public class MessageTimeToLiveChecker implements Runnable {
 
   private final TypedCommandWriter writer;
-  private final MessageStateController messageStateController;
+  private final MessageState messageStateController;
 
   private final MessageRecord deleteMessageCommand = new MessageRecord();
 
-  public MessageTimeToLiveChecker(
-      TypedCommandWriter writer, MessageStateController messageStateController) {
+  public MessageTimeToLiveChecker(TypedCommandWriter writer, MessageState messageStateController) {
     this.writer = writer;
     this.messageStateController = messageStateController;
   }

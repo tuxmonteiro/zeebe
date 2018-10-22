@@ -21,7 +21,7 @@ import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 import static io.zeebe.util.StringUtil.getBytes;
 import static io.zeebe.util.buffer.BufferUtil.contentsEqual;
 
-import io.zeebe.broker.util.KeyStateController;
+import io.zeebe.broker.util.KeyState;
 import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.logstreams.rocksdb.ZbRocksDb.IteratorControl;
 import io.zeebe.logstreams.rocksdb.ZbWriteBatch;
@@ -41,7 +41,7 @@ import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
 
-public class JobStateController extends KeyStateController {
+public class JobState extends KeyState {
   private static final byte[] STATES_COLUMN_FAMILY_NAME = getBytes("states");
   private static final byte[] DEADLINES_COLUMN_FAMILY_NAME = getBytes("deadlines");
   private static final byte[] ACTIVATABLE_COLUMN_FAMILY_NAME = getBytes("activatable");
@@ -83,7 +83,8 @@ public class JobStateController extends KeyStateController {
   }
 
   @Override
-  protected RocksDB openDb(DBOptions dbOptions) throws RocksDBException {
+  protected RocksDB openDbWithColumnFamiliesAndOptions(DBOptions dbOptions)
+      throws RocksDBException {
     db =
         ZbRocksDb.open(
             dbOptions, dbDirectory.getAbsolutePath(), columnFamilyDescriptors, columnFamilyHandles);

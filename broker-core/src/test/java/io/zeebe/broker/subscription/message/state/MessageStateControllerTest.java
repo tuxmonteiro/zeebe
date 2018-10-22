@@ -35,11 +35,11 @@ public class MessageStateControllerTest {
 
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
-  private MessageStateController stateController;
+  private MessageState stateController;
 
   @Before
   public void setUp() throws Exception {
-    stateController = new MessageStateController();
+    stateController = new MessageState();
     stateController.open(folder.newFolder("rocksdb"), false);
   }
 

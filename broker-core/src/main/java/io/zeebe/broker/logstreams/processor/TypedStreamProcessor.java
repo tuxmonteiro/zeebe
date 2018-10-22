@@ -24,23 +24,20 @@ import io.zeebe.logstreams.processor.EventProcessor;
 import io.zeebe.logstreams.processor.StreamProcessor;
 import io.zeebe.logstreams.processor.StreamProcessorContext;
 import io.zeebe.logstreams.spi.SnapshotSupport;
-import io.zeebe.logstreams.state.StateController;
+import io.zeebe.logstreams.state.State;
 import io.zeebe.msgpack.UnpackedObject;
 import io.zeebe.protocol.clientapi.ValueType;
 import io.zeebe.protocol.impl.record.RecordMetadata;
 import io.zeebe.transport.ServerOutput;
 import io.zeebe.util.ReflectUtil;
 import io.zeebe.util.sched.ActorControl;
-import io.zeebe.util.sched.future.ActorFuture;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 
 @SuppressWarnings({"unchecked"})
 public class TypedStreamProcessor implements StreamProcessor {
-
-  // TODO: remove once we remove snapshot support
-  protected StateController stateController;
+  private final List<State> states;
 
   protected final SnapshotSupport snapshotSupport;
   protected final ServerOutput output;
@@ -60,7 +57,7 @@ public class TypedStreamProcessor implements StreamProcessor {
   private StreamProcessorContext streamProcessorContext;
 
   public TypedStreamProcessor(
-      final StateController stateController,
+      final List<State> states,
       final SnapshotSupport snapshotSupport,
       final ServerOutput output,
       final RecordProcessorMap recordProcessors,
@@ -68,7 +65,7 @@ public class TypedStreamProcessor implements StreamProcessor {
       final EnumMap<ValueType, Class<? extends UnpackedObject>> eventRegistry,
       final KeyGenerator keyGenerator,
       final TypedStreamEnvironment environment) {
-    this.stateController = stateController;
+    this.states = states;
     this.snapshotSupport = snapshotSupport;
     this.output = output;
     this.recordProcessors = recordProcessors;
@@ -82,6 +79,11 @@ public class TypedStreamProcessor implements StreamProcessor {
     eventRegistry.forEach((t, c) -> eventCache.put(t, ReflectUtil.newInstance(c)));
     this.eventRegistry = eventRegistry;
     this.environment = environment;
+  }
+
+  @Override
+  public List<State> getStates() {
+    return states;
   }
 
   @Override
@@ -111,11 +113,6 @@ public class TypedStreamProcessor implements StreamProcessor {
   }
 
   @Override
-  public StateController getStateController() {
-    return stateController;
-  }
-
-  @Override
   public EventProcessor onEvent(final LoggedEvent event) {
     metadata.reset();
     event.readMetadata(metadata);
@@ -140,10 +137,6 @@ public class TypedStreamProcessor implements StreamProcessor {
   public MetadataFilter buildTypeFilter() {
     return m ->
         recordProcessors.containsKey(m.getRecordType(), m.getValueType(), m.getIntent().value());
-  }
-
-  public ActorFuture<Void> runAsync(final Runnable runnable) {
-    return actor.call(runnable);
   }
 
   protected static class DelegatingEventProcessor implements EventProcessor {

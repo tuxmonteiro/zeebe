@@ -72,10 +72,10 @@ public class WorkflowPersistenceCache {
     this.rocksDbWrapper = rocksDbWrapper;
     persistenceHelper = new PersistenceHelper(rocksDbWrapper);
 
-    workflowsHandle = rocksDbWrapper.getColumnFamilyHandle(WORKFLOWS_FAMILY_NAME);
+    workflowsHandle = rocksDbWrapper.getState(WORKFLOWS_FAMILY_NAME);
     workflowsByIdAndVersionHandle =
-        rocksDbWrapper.getColumnFamilyHandle(WORKFLOWS_BY_ID_AND_VERSION_FAMILY_NAME);
-    latestWorkflowsHandle = rocksDbWrapper.getColumnFamilyHandle(LATEST_WORKFLOWS_FAMILY_NAME);
+        rocksDbWrapper.getState(WORKFLOWS_BY_ID_AND_VERSION_FAMILY_NAME);
+    latestWorkflowsHandle = rocksDbWrapper.getState(LATEST_WORKFLOWS_FAMILY_NAME);
 
     deployments = new LongHashSet();
     workflowsByKey = new Long2ObjectHashMap<>();

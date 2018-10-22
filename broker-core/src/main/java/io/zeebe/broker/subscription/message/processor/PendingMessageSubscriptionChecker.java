@@ -18,7 +18,7 @@
 package io.zeebe.broker.subscription.message.processor;
 
 import io.zeebe.broker.subscription.command.SubscriptionCommandSender;
-import io.zeebe.broker.subscription.message.state.MessageStateController;
+import io.zeebe.broker.subscription.message.state.MessageState;
 import io.zeebe.broker.subscription.message.state.MessageSubscription;
 import io.zeebe.util.sched.clock.ActorClock;
 import java.util.List;
@@ -26,13 +26,13 @@ import java.util.List;
 public class PendingMessageSubscriptionChecker implements Runnable {
 
   private final SubscriptionCommandSender commandSender;
-  private final MessageStateController messageStateController;
+  private final MessageState messageStateController;
 
   private final long subscriptionTimeout;
 
   public PendingMessageSubscriptionChecker(
       SubscriptionCommandSender commandSender,
-      MessageStateController messageStateController,
+      MessageState messageStateController,
       long subscriptionTimeout) {
     this.commandSender = commandSender;
     this.messageStateController = messageStateController;

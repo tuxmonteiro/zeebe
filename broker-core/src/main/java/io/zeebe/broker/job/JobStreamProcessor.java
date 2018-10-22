@@ -19,7 +19,7 @@ package io.zeebe.broker.job;
 
 import static io.zeebe.util.sched.clock.ActorClock.currentTimeMillis;
 
-import io.zeebe.broker.job.JobStateController.State;
+import io.zeebe.broker.job.JobState.State;
 import io.zeebe.broker.job.old.CreditsRequest;
 import io.zeebe.broker.job.old.JobSubscriptionManager;
 import io.zeebe.broker.job.old.JobSubscriptionProcessor;
@@ -55,7 +55,7 @@ import org.agrona.ExpandableArrayBuffer;
 public class JobStreamProcessor implements StreamProcessorLifecycleAware {
   public static final Duration TIME_OUT_POLLING_INTERVAL = Duration.ofSeconds(30);
   private final JobSubscriptionManager subscriptionManager;
-  private final JobStateController state = new JobStateController();
+  private final JobState state = new JobState();
 
   private SubscribedRecordWriter subscribedEventWriter;
   private int partitionId;

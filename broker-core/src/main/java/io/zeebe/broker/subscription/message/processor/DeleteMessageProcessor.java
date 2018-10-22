@@ -21,15 +21,15 @@ import io.zeebe.broker.logstreams.processor.TypedRecord;
 import io.zeebe.broker.logstreams.processor.TypedRecordProcessor;
 import io.zeebe.broker.logstreams.processor.TypedResponseWriter;
 import io.zeebe.broker.logstreams.processor.TypedStreamWriter;
-import io.zeebe.broker.subscription.message.state.MessageStateController;
+import io.zeebe.broker.subscription.message.state.MessageState;
 import io.zeebe.protocol.impl.record.value.message.MessageRecord;
 import io.zeebe.protocol.intent.MessageIntent;
 
 public class DeleteMessageProcessor implements TypedRecordProcessor<MessageRecord> {
 
-  private final MessageStateController messageStateController;
+  private final MessageState messageStateController;
 
-  public DeleteMessageProcessor(MessageStateController messageStateController) {
+  public DeleteMessageProcessor(MessageState messageStateController) {
     this.messageStateController = messageStateController;
   }
 

@@ -19,7 +19,7 @@ package io.zeebe.broker.workflow.state;
 
 import io.zeebe.broker.subscription.message.data.WorkflowInstanceSubscriptionRecord;
 import io.zeebe.broker.subscription.message.state.SubscriptionState;
-import io.zeebe.broker.util.KeyStateController;
+import io.zeebe.broker.util.KeyState;
 import io.zeebe.protocol.impl.record.value.deployment.DeploymentRecord;
 import io.zeebe.util.buffer.BufferUtil;
 import java.io.File;
@@ -31,7 +31,7 @@ import org.agrona.DirectBuffer;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.RocksDB;
 
-public class WorkflowState extends KeyStateController {
+public class WorkflowState extends KeyState {
   private static final byte[] WORKFLOW_KEY_FAMILY_NAME = "workflowKey".getBytes();
   private static final byte[] WORKFLOW_VERSION_FAMILY_NAME = "workflowVersion".getBytes();
   public static final byte[][] COLUMN_FAMILY_NAMES = {

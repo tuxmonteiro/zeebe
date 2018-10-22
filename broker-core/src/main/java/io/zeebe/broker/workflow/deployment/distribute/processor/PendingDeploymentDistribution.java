@@ -24,6 +24,7 @@ import static org.agrona.BitUtil.SIZE_OF_LONG;
 import io.zeebe.util.buffer.BufferReader;
 import io.zeebe.util.buffer.BufferWriter;
 import org.agrona.DirectBuffer;
+import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
 
 public class PendingDeploymentDistribution implements BufferReader, BufferWriter {
@@ -35,6 +36,10 @@ public class PendingDeploymentDistribution implements BufferReader, BufferWriter
   private final DirectBuffer deployment;
   private long sourcePosition;
   private long distributionCount;
+
+  public PendingDeploymentDistribution() {
+    this.deployment = new ExpandableArrayBuffer();
+  }
 
   public PendingDeploymentDistribution(DirectBuffer deployment, long sourcePosition) {
     this.deployment = deployment;

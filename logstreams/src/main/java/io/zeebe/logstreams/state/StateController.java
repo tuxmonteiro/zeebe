@@ -15,23 +15,19 @@
  */
 package io.zeebe.logstreams.state;
 
-import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
-
 import io.zeebe.logstreams.impl.Loggers;
 import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.util.ByteValue;
-import io.zeebe.util.LangUtil;
-import io.zeebe.util.buffer.BufferWriter;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
-import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.rocksdb.BlockBasedTableConfig;
 import org.rocksdb.BloomFilter;
@@ -48,7 +44,6 @@ import org.rocksdb.MemTableConfig;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.RocksIterator;
 import org.rocksdb.SkipListMemTableConfig;
 import org.rocksdb.TableFormatConfig;
 import org.slf4j.Logger;
@@ -67,76 +62,37 @@ import org.slf4j.Logger;
 public class StateController implements AutoCloseable {
   private static final Logger LOG = Loggers.ROCKSDB_LOGGER;
 
-  private final MutableDirectBuffer dbLongBuffer = new UnsafeBuffer(new byte[Long.BYTES]);
+  protected final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
+  protected final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
+  protected final List<AutoCloseable> closeables = new ArrayList<>();
+
+  private final Map<DirectBuffer, State> stateMap = new HashMap<>();
+  private final DirectBuffer columnFamilyNameBuffer = new UnsafeBuffer(0, 0);
+
   private boolean isOpened = false;
   private ZbRocksDb db;
   protected File dbDirectory;
-  protected List<AutoCloseable> closeables = new ArrayList<>();
 
-  protected final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
-  protected final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
-
-  final DirectBuffer prefixBuffer = new UnsafeBuffer(0, 0);
-  final DirectBuffer prefixKeyCheckBuffer = new UnsafeBuffer(0, 0);
-
-  private long nativeHandle_;
-
-  public ZbRocksDb open(final File dbDirectory, final boolean reopen) throws Exception {
+  public ZbRocksDb open(final File dbDirectory, final boolean reopen) {
     if (!isOpened) {
       try {
         this.dbDirectory = dbDirectory;
-        final Options options =
-            createOptions()
-                .setCreateMissingColumnFamilies(true)
-                .setErrorIfExists(!reopen)
-                .setCreateIfMissing(!reopen);
-        closeables.add(options);
-        db = openDb(options);
-        closeables.add(db);
-        isOpened = true;
-
-        this.nativeHandle_ = (long) RocksDbInternal.rocksDbNativeHandle.get(db);
-      } catch (final RocksDBException ex) {
-        close();
-        throw ex;
-      }
-
-      LOG.trace("Opened RocksDB {}", this.dbDirectory);
-    }
-
-    return db;
-  }
-
-  protected ZbRocksDb openDb(final Options options) throws RocksDBException {
-    return ZbRocksDb.open(options, dbDirectory.getAbsolutePath());
-  }
-
-  protected ZbRocksDb open(
-      final File dbDirectory, final boolean reopen, List<byte[]> columnFamilyNames)
-      throws Exception {
-    if (!isOpened) {
-      try {
         final ColumnFamilyOptions columnFamilyOptions = createColumnFamilyOptions();
-        createFamilyDescriptors(columnFamilyNames, columnFamilyOptions);
+        createFamilyDescriptors(stateMap.keySet(), columnFamilyOptions);
 
-        this.dbDirectory = dbDirectory;
+        final DBOptions dbOptions = createDbOptions(reopen);
+        openDatabase(dbDirectory, dbOptions);
 
-        final DBOptions dbOptions =
-            new DBOptions()
-                .setEnv(getDbEnv())
-                .setCreateMissingColumnFamilies(!reopen)
-                .setErrorIfExists(!reopen)
-                .setCreateIfMissing(!reopen);
+        for (ColumnFamilyHandle handle : columnFamilyHandles) {
+          final State state = getState(handle.getName());
+          if (state != null) {
+            state.onOpenedDb(db, handle);
+          }
+        }
 
-        closeables.add(dbOptions);
-        db = openDb(dbOptions);
-        closeables.add(db);
-        isOpened = true;
-
-        this.nativeHandle_ = (long) RocksDbInternal.rocksDbNativeHandle.get(db);
-      } catch (final RocksDBException ex) {
+      } catch (final Exception ex) {
         close();
-        throw ex;
+        throw new RuntimeException(ex);
       }
 
       LOG.trace("Opened RocksDB {}", this.dbDirectory);
@@ -145,36 +101,42 @@ public class StateController implements AutoCloseable {
     return db;
   }
 
-  protected ZbRocksDb openDb(DBOptions dbOptions) throws RocksDBException {
-    return ZbRocksDb.open(
-        dbOptions, dbDirectory.getAbsolutePath(), columnFamilyDescriptors, columnFamilyHandles);
+  private DBOptions createDbOptions(boolean reopen) {
+    final DBOptions dbOptions =
+        new DBOptions()
+            .setEnv(getDbEnv())
+            .setCreateMissingColumnFamilies(!reopen)
+            .setErrorIfExists(!reopen)
+            .setCreateIfMissing(!reopen);
+
+    closeables.add(dbOptions);
+    return dbOptions;
   }
 
-  public ColumnFamilyHandle getColumnFamilyHandle(byte[] name) {
-    return columnFamilyHandles
-        .stream()
-        .filter(
-            handle -> {
-              try {
-                return Arrays.equals(handle.getName(), name);
-              } catch (Exception ex) {
-                throw new RuntimeException(ex);
-              }
-            })
-        .findAny()
-        .orElse(null);
+  private void openDatabase(File dbDirectory, DBOptions dbOptions) throws RocksDBException {
+    db =
+        ZbRocksDb.open(
+            dbOptions, dbDirectory.getAbsolutePath(), columnFamilyDescriptors, columnFamilyHandles);
+
+    closeables.add(db);
+    isOpened = true;
+  }
+
+  private State getState(byte[] name) {
+    columnFamilyNameBuffer.wrap(name);
+    return stateMap.get(columnFamilyNameBuffer);
   }
 
   private void createFamilyDescriptors(
-      List<byte[]> columnFamilyNames, ColumnFamilyOptions columnFamilyOptions) {
+      Set<DirectBuffer> columnFamilyNames, ColumnFamilyOptions columnFamilyOptions) {
     final ColumnFamilyDescriptor defaultFamilyDescriptor =
         new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY, createColumnFamilyOptions());
     columnFamilyDescriptors.add(defaultFamilyDescriptor);
 
     if (columnFamilyNames != null && columnFamilyNames.size() > 0) {
-      for (byte[] name : columnFamilyNames) {
+      for (DirectBuffer name : columnFamilyNames) {
         final ColumnFamilyDescriptor columnFamilyDescriptor =
-            new ColumnFamilyDescriptor(name, columnFamilyOptions);
+            new ColumnFamilyDescriptor(name.byteArray(), columnFamilyOptions);
         columnFamilyDescriptors.add(columnFamilyDescriptor);
       }
     }
@@ -231,14 +193,6 @@ public class StateController implements AutoCloseable {
     return Env.getDefault();
   }
 
-  protected void ensureIsOpened(final String operation) {
-    if (!isOpened()) {
-      final String message =
-          String.format("%s cannot be executed unless database is opened", operation);
-      throw new IllegalStateException(message);
-    }
-  }
-
   public boolean isOpened() {
     return isOpened;
   }
@@ -277,343 +231,12 @@ public class StateController implements AutoCloseable {
     return db;
   }
 
-  private void setKey(final long key) {
-    dbLongBuffer.putLong(0, key, STATE_BYTE_ORDER);
-  }
-
-  public void put(final long key, final byte[] valueBuffer) {
-    setKey(key);
-    try {
-      db.put(dbLongBuffer.byteArray(), valueBuffer);
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-  }
-
-  public void put(
-      final ColumnFamilyHandle handle,
-      final long key,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    setKey(key);
-    put(
-        handle,
-        dbLongBuffer.byteArray(),
-        0,
-        dbLongBuffer.capacity(),
-        value,
-        valueOffset,
-        valueLength);
-  }
-
-  public void put(
-      final ColumnFamilyHandle handle,
-      final byte[] key,
-      final int keyOffset,
-      final int keyLength,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    try {
-      final long columnFamilyHandle = (long) RocksDbInternal.columnFamilyHandle.get(handle);
-      RocksDbInternal.putWithHandle.invoke(
-          db,
-          nativeHandle_,
-          key,
-          keyOffset,
-          keyLength,
-          value,
-          valueOffset,
-          valueLength,
-          columnFamilyHandle);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void put(
-      final long key, final byte[] value, final int valueOffset, final int valueLength) {
-    setKey(key);
-    put(dbLongBuffer.byteArray(), 0, dbLongBuffer.capacity(), value, valueOffset, valueLength);
-  }
-
-  public void put(
-      final byte[] key,
-      final int keyOffset,
-      final int keyLength,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    try {
-      RocksDbInternal.putMethod.invoke(
-          db, nativeHandle_, key, keyOffset, keyLength, value, valueOffset, valueLength);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  /**
-   * *creates garbage*
-   *
-   * @param key
-   * @param valueWriter
-   */
-  public void put(final long key, final BufferWriter valueWriter) {
-    setKey(key);
-    final int length = valueWriter.getLength();
-    final byte[] bytes = new byte[length];
-    final UnsafeBuffer buffer = new UnsafeBuffer(bytes);
-
-    valueWriter.write(buffer, 0);
-
-    try {
-      db.put(dbLongBuffer.byteArray(), bytes);
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-  }
-
-  public void put(final byte[] key, final byte[] valueBuffer) {
-    try {
-      db.put(key, valueBuffer);
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-  }
-
-  public void delete(final long key) {
-    setKey(key);
-    try {
-      db.delete(dbLongBuffer.byteArray());
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-  }
-
-  public void delete(final byte[] key) {
-    try {
-      db.delete(key);
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-  }
-
-  public int get(
-      final byte[] key,
-      final int keyOffset,
-      final int keyLength,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    try {
-      return (int)
-          RocksDbInternal.getMethod.invoke(
-              db, nativeHandle_, key, keyOffset, keyLength, value, valueOffset, valueLength);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public int get(
-      final ColumnFamilyHandle columnFamilyHandle,
-      final byte[] key,
-      final int keyOffset,
-      final int keyLength,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    try {
-      final long nativeHandle = (long) RocksDbInternal.columnFamilyHandle.get(columnFamilyHandle);
-      return (int)
-          RocksDbInternal.getWithHandle.invoke(
-              db,
-              nativeHandle_,
-              key,
-              keyOffset,
-              keyLength,
-              value,
-              valueOffset,
-              valueLength,
-              nativeHandle);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public int get(
-      final ColumnFamilyHandle columnFamilyHandle,
-      final long key,
-      final byte[] value,
-      final int valueOffset,
-      final int valueLength) {
-    setKey(key);
-
-    try {
-      final long nativeHandle = (long) RocksDbInternal.columnFamilyHandle.get(columnFamilyHandle);
-      return (int)
-          RocksDbInternal.getWithHandle.invoke(
-              db,
-              nativeHandle_,
-              dbLongBuffer.byteArray(),
-              0,
-              dbLongBuffer.capacity(),
-              value,
-              valueOffset,
-              valueLength,
-              nativeHandle);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  /**
-   * !creates garbage!
-   *
-   * @param key
-   * @return
-   */
-  public byte[] get(final long key) {
-    setKey(key);
-
-    byte[] bytes = null;
-    try {
-      bytes = getDb().get(dbLongBuffer.byteArray());
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-
-    return bytes;
-  }
-
-  public boolean tryGet(final long key, final byte[] valueBuffer) {
-    setKey(key);
-
-    return tryGet(dbLongBuffer.byteArray(), valueBuffer);
-  }
-
-  public boolean tryGet(final byte[] keyBuffer, final byte[] valueBuffer) {
-    boolean found = false;
-
-    try {
-      final int bytesRead = getDb().get(keyBuffer, valueBuffer);
-      found = bytesRead == valueBuffer.length;
-    } catch (final RocksDBException e) {
-      LangUtil.rethrowUnchecked(e);
-    }
-
-    return found;
-  }
-
-  public boolean exist(
-      final ColumnFamilyHandle handle, final byte[] key, final int offset, final int length) {
-    try {
-      final long nativeHandle = (long) RocksDbInternal.columnFamilyHandle.get(handle);
-      final int readBytes =
-          (int)
-              RocksDbInternal.getWithHandle.invoke(
-                  db,
-                  nativeHandle_,
-                  key,
-                  offset,
-                  length,
-                  dbLongBuffer.byteArray(),
-                  0,
-                  dbLongBuffer.capacity(),
-                  nativeHandle);
-      return readBytes > 0;
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void remove(final byte[] key, final int offset, final int length) {
-    try {
-      RocksDbInternal.removeMethod.invoke(db, nativeHandle_, key, offset, length);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void remove(
-      final ColumnFamilyHandle handle, final byte[] key, final int offset, final int length) {
-    try {
-      final long nativeHandle = (long) RocksDbInternal.columnFamilyHandle.get(handle);
-      RocksDbInternal.removeWithHandle.invoke(db, nativeHandle_, key, offset, length, nativeHandle);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void remove(final ColumnFamilyHandle handle, long key) {
-    setKey(key);
-    try {
-      final long nativeHandle = (long) RocksDbInternal.columnFamilyHandle.get(handle);
-      RocksDbInternal.removeWithHandle.invoke(
-          db, nativeHandle_, dbLongBuffer.byteArray(), 0, dbLongBuffer.capacity(), nativeHandle);
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void foreach(
-      final ColumnFamilyHandle handle, final BiConsumer<byte[], byte[]> keyValueConsumer) {
-    try (RocksIterator rocksIterator = getDb().newIterator(handle)) {
-      rocksIterator.seekToFirst();
-      while (rocksIterator.isValid()) {
-        keyValueConsumer.accept(rocksIterator.key(), rocksIterator.value());
-        rocksIterator.next();
-      }
-    }
-  }
-
-  public void removeEntriesWithPrefix(
-      final ColumnFamilyHandle handle, byte[] prefix, BiConsumer<byte[], byte[]> entryConsumer) {
-    whileEqualPrefix(
-        handle,
-        prefix,
-        (k, v) -> {
-          remove(handle, k, 0, k.length);
-          entryConsumer.accept(k, v);
-        });
-  }
-
-  public void whileEqualPrefix(
-      final ColumnFamilyHandle handle,
-      final byte[] prefix,
-      final BiConsumer<byte[], byte[]> keyValueConsumer) {
-    prefixBuffer.wrap(prefix);
-
-    try (RocksIterator rocksIterator = getDb().newIterator(handle)) {
-      rocksIterator.seek(prefix);
-      while (rocksIterator.isValid()) {
-
-        final byte[] key = rocksIterator.key();
-        prefixKeyCheckBuffer.wrap(key, 0, prefixBuffer.capacity());
-        final boolean equalKeyPrefix = prefixBuffer.equals(prefixKeyCheckBuffer);
-        if (equalKeyPrefix) {
-          keyValueConsumer.accept(key, rocksIterator.value());
-          rocksIterator.next();
-        } else {
-          break;
-        }
-      }
-    }
-  }
-
-  public void whileTrue(
-      final ColumnFamilyHandle handle, final BiFunction<byte[], byte[], Boolean> keyValueConsumer) {
-    try (RocksIterator rocksIterator = getDb().newIterator(handle)) {
-      rocksIterator.seekToFirst();
-      while (rocksIterator.isValid()) {
-        final boolean shouldContinue =
-            keyValueConsumer.apply(rocksIterator.key(), rocksIterator.value());
-        if (shouldContinue) {
-          rocksIterator.next();
-        } else {
-          break;
-        }
-      }
-    }
+  public void register(List<State> states) {
+    final Map<UnsafeBuffer, State> mapFromList =
+        states
+            .stream()
+            .collect(
+                Collectors.toMap(key -> new UnsafeBuffer(key.getColumnFamilyName()), item -> item));
+    stateMap.putAll(mapFromList);
   }
 }

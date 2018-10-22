@@ -17,7 +17,8 @@ package io.zeebe.logstreams.processor;
 
 import io.zeebe.logstreams.log.LoggedEvent;
 import io.zeebe.logstreams.spi.SnapshotSupport;
-import io.zeebe.logstreams.state.StateController;
+import io.zeebe.logstreams.state.State;
+import java.util.List;
 
 /** Process events from a log stream. */
 public interface StreamProcessor {
@@ -28,16 +29,7 @@ public interface StreamProcessor {
    */
   SnapshotSupport getStateResource();
 
-  /**
-   * TODO: Remove when we get rid of state resources, no need to expose this afterwards. Return the
-   * associated DB controller if any.
-   *
-   * @deprecated
-   * @return current rocks DB controller (or null if none)
-   */
-  default StateController getStateController() {
-    return null;
-  }
+  List<State> getStates();
 
   /**
    * Returns a specific processor to process the event which is read from the log stream, if

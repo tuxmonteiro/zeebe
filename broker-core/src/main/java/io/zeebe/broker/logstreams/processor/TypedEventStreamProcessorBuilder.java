@@ -22,6 +22,7 @@ import io.zeebe.logstreams.snapshot.ComposedSnapshot;
 import io.zeebe.logstreams.snapshot.ZbMapSnapshotSupport;
 import io.zeebe.logstreams.spi.ComposableSnapshotSupport;
 import io.zeebe.logstreams.spi.SnapshotSupport;
+import io.zeebe.logstreams.state.State;
 import io.zeebe.logstreams.state.StateController;
 import io.zeebe.map.ZbMap;
 import io.zeebe.msgpack.UnpackedObject;
@@ -40,6 +41,7 @@ public class TypedEventStreamProcessorBuilder {
 
   protected StateController stateController;
   protected List<ComposableSnapshotSupport> stateResources = new ArrayList<>();
+  private List<State> states;
 
   protected RecordProcessorMap eventProcessors = new RecordProcessorMap();
   protected List<StreamProcessorLifecycleAware> lifecycleListeners = new ArrayList<>();
@@ -48,6 +50,7 @@ public class TypedEventStreamProcessorBuilder {
 
   public TypedEventStreamProcessorBuilder(TypedStreamEnvironment environment) {
     this.environment = environment;
+    this.stateController = new StateController();
   }
 
   // TODO: could remove the ValueType argument as it follows from the intent
@@ -110,9 +113,9 @@ public class TypedEventStreamProcessorBuilder {
     return this;
   }
 
-  public TypedEventStreamProcessorBuilder withStateController(
-      final StateController stateController) {
-    this.stateController = stateController;
+  public TypedEventStreamProcessorBuilder withStateController(final State state) {
+    stateController.register(state);
+
     withListener(
         new StreamProcessorLifecycleAware() {
           @Override
@@ -140,9 +143,11 @@ public class TypedEventStreamProcessorBuilder {
     return this;
   }
 
-  public TypedEventStreamProcessorBuilder withStateResource(
-      ComposableSnapshotSupport snapshotSupport) {
-    this.stateResources.add(snapshotSupport);
+  public TypedEventStreamProcessorBuilder withStates(List<State> states) {
+    if (null == states) {
+      states = new ArrayList<>();
+    }
+    states.addAll(states);
     return this;
   }
 
@@ -158,7 +163,7 @@ public class TypedEventStreamProcessorBuilder {
     }
 
     return new TypedStreamProcessor(
-        stateController,
+        states,
         snapshotSupport,
         environment.getOutput(),
         eventProcessors,
@@ -170,7 +175,7 @@ public class TypedEventStreamProcessorBuilder {
 
   private static class DelegatingEventProcessor<T extends UnpackedObject>
       implements TypedRecordProcessor<T> {
-    private Function<TypedRecord<T>, TypedRecordProcessor<T>> dispatcher;
+    private final Function<TypedRecord<T>, TypedRecordProcessor<T>> dispatcher;
     private TypedRecordProcessor<T> selectedProcessor;
 
     DelegatingEventProcessor(Function<TypedRecord<T>, TypedRecordProcessor<T>> dispatcher) {

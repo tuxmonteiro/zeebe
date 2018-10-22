@@ -20,7 +20,7 @@ package io.zeebe.broker.job;
 import static io.zeebe.util.buffer.BufferUtil.wrapString;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.broker.job.JobStateController.State;
+import io.zeebe.broker.job.JobState.State;
 import io.zeebe.protocol.impl.record.value.job.JobRecord;
 import io.zeebe.util.buffer.BufferUtil;
 import java.util.ArrayList;
@@ -37,11 +37,11 @@ import org.junit.rules.TemporaryFolder;
 public class JobStateControllerTest {
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
-  private JobStateController stateController;
+  private JobState stateController;
 
   @Before
   public void setUp() throws Exception {
-    stateController = new JobStateController();
+    stateController = new JobState();
     stateController.open(folder.newFolder("db"), false);
   }
 
@@ -335,7 +335,7 @@ public class JobStateControllerTest {
     return jobRecord;
   }
 
-  private void assertJobState(final long key, final JobStateController.State state) {
+  private void assertJobState(final long key, final JobState.State state) {
     final List<State> others =
         Arrays.stream(State.values()).filter(s -> s != state).collect(Collectors.toList());
 

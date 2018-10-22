@@ -19,7 +19,7 @@ package io.zeebe.broker.logstreams.processor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.broker.util.KeyStateController;
+import io.zeebe.broker.util.KeyState;
 import io.zeebe.protocol.Protocol;
 import org.junit.Before;
 import org.junit.Rule;
@@ -30,12 +30,12 @@ public class KeyGeneratorTest {
 
   @Rule public TemporaryFolder folder = new TemporaryFolder();
 
-  private KeyStateController stateController;
+  private KeyState stateController;
   private KeyGenerator keyGenerator;
 
   @Before
   public void setUp() {
-    stateController = new KeyStateController();
+    stateController = new KeyState();
     keyGenerator = new KeyGenerator(0, 0, 1, stateController);
   }
 

@@ -27,7 +27,7 @@ import io.zeebe.broker.logstreams.processor.TypedResponseWriter;
 import io.zeebe.broker.logstreams.processor.TypedStreamWriter;
 import io.zeebe.broker.subscription.command.SubscriptionCommandSender;
 import io.zeebe.broker.subscription.message.state.Message;
-import io.zeebe.broker.subscription.message.state.MessageStateController;
+import io.zeebe.broker.subscription.message.state.MessageState;
 import io.zeebe.broker.subscription.message.state.MessageSubscription;
 import io.zeebe.protocol.clientapi.RejectionType;
 import io.zeebe.protocol.impl.record.value.message.MessageRecord;
@@ -37,7 +37,7 @@ import java.util.function.Consumer;
 
 public class PublishMessageProcessor implements TypedRecordProcessor<MessageRecord> {
 
-  private final MessageStateController messageStateController;
+  private final MessageState messageStateController;
   private final SubscriptionCommandSender commandSender;
 
   private TypedResponseWriter responseWriter;
@@ -45,8 +45,7 @@ public class PublishMessageProcessor implements TypedRecordProcessor<MessageReco
   private List<MessageSubscription> matchingSubscriptions;
 
   public PublishMessageProcessor(
-      MessageStateController messageStateController,
-      final SubscriptionCommandSender commandSender) {
+      MessageState messageStateController, final SubscriptionCommandSender commandSender) {
     this.messageStateController = messageStateController;
     this.commandSender = commandSender;
   }

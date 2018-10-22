@@ -23,7 +23,7 @@ import io.zeebe.broker.clustering.base.topology.TopologyPartitionListenerImpl;
 import io.zeebe.broker.system.configuration.ClusterCfg;
 import io.zeebe.broker.system.management.deployment.PushDeploymentRequest;
 import io.zeebe.broker.system.management.deployment.PushDeploymentResponse;
-import io.zeebe.broker.workflow.deployment.distribute.processor.state.DeploymentsStateController;
+import io.zeebe.broker.workflow.deployment.distribute.processor.state.DeploymentsState;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.transport.ClientResponse;
 import io.zeebe.transport.ClientTransport;
@@ -53,7 +53,7 @@ public class DeploymentDistributor {
 
   private final transient Long2ObjectHashMap<ActorFuture<Void>> pendingDeploymentFutures =
       new Long2ObjectHashMap<>();
-  private final DeploymentsStateController deploymentsStateController;
+  private final DeploymentsState deploymentsStateController;
 
   private final IntArrayList partitionsToDistributeTo;
 
@@ -61,7 +61,7 @@ public class DeploymentDistributor {
       final ClusterCfg clusterCfg,
       final ClientTransport managementApi,
       final TopologyPartitionListenerImpl partitionListener,
-      final DeploymentsStateController deploymentsStateController,
+      final DeploymentsState deploymentsStateController,
       final ActorControl actor) {
     this.managementApi = managementApi;
     this.partitionListener = partitionListener;

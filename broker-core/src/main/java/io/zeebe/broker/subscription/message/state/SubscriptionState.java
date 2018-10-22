@@ -60,8 +60,8 @@ public class SubscriptionState<T extends Subscription> {
     keyBuffer = new ExpandableArrayBuffer();
     valueBuffer = new ExpandableArrayBuffer();
 
-    subscriptionHandle = rocksDbWrapper.getColumnFamilyHandle(SUB_NAME);
-    subSendTimeHandle = rocksDbWrapper.getColumnFamilyHandle(SUB_SEND_TIME_NAME);
+    subscriptionHandle = rocksDbWrapper.getState(SUB_NAME);
+    subSendTimeHandle = rocksDbWrapper.getState(SUB_SEND_TIME_NAME);
   }
 
   public void put(final T subscription) {

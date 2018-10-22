@@ -26,6 +26,9 @@ import io.zeebe.logstreams.processor.EventFilter;
 import io.zeebe.logstreams.processor.StreamProcessor;
 import io.zeebe.logstreams.spi.SnapshotController;
 import io.zeebe.logstreams.spi.SnapshotStorage;
+import io.zeebe.logstreams.state.StateController;
+import io.zeebe.logstreams.state.StateSnapshotController;
+import io.zeebe.logstreams.state.StateStorage;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.protocol.impl.record.RecordMetadata;
 import io.zeebe.servicecontainer.Service;
@@ -66,8 +69,8 @@ public class StreamProcessorServiceFactory implements Service<StreamProcessorSer
   public class Builder {
     private final LogStream logStream;
     private final SnapshotStorage snapshotStorage;
+    private final Partition partition;
 
-    private SnapshotController snapshotController;
     private String processorName;
     private int processorId = -1;
     private StreamProcessor streamProcessor;
@@ -77,6 +80,7 @@ public class StreamProcessorServiceFactory implements Service<StreamProcessorSer
     protected boolean readOnly = false;
 
     public Builder(Partition partition, ServiceName<Partition> serviceName) {
+      this.partition = partition;
       this.logStream = partition.getLogStream();
       snapshotStorage = partition.getSnapshotStorage();
       this.additionalDependencies.add(serviceName);
@@ -108,11 +112,6 @@ public class StreamProcessorServiceFactory implements Service<StreamProcessorSer
       return this;
     }
 
-    public Builder snapshotController(SnapshotController snapshotController) {
-      this.snapshotController = snapshotController;
-      return this;
-    }
-
     public Builder readOnly(boolean readOnly) {
       this.readOnly = readOnly;
       return this;
@@ -135,6 +134,14 @@ public class StreamProcessorServiceFactory implements Service<StreamProcessorSer
         metadataFilter = metadataFilter.and(customEventFilter);
       }
       final EventFilter eventFilter = new MetadataEventFilter(metadataFilter);
+
+      final StateController stateController = new StateController();
+      stateController.register(streamProcessor.getStates());
+
+      final StateStorage stateStorage =
+          partition.getStateStorageFactory().create(processorId, processorName);
+      final SnapshotController snapshotController =
+          new StateSnapshotController(stateController, stateStorage);
 
       return LogStreams.createStreamProcessor(processorName, processorId, streamProcessor)
           .actorScheduler(actorScheduler)

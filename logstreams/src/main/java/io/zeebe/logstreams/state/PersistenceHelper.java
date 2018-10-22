@@ -15,22 +15,24 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package io.zeebe.broker.workflow.state;
+package io.zeebe.logstreams.state;
 
-import io.zeebe.broker.Loggers;
-import io.zeebe.logstreams.state.StateController;
+import io.zeebe.logstreams.impl.Loggers;
+import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.util.buffer.BufferReader;
 import org.agrona.DirectBuffer;
+import org.agrona.ExpandableArrayBuffer;
+import org.agrona.MutableDirectBuffer;
 import org.rocksdb.ColumnFamilyHandle;
 
 public class PersistenceHelper {
 
-  public static final byte[] EXISTENCE = new byte[] {1};
+  private final MutableDirectBuffer valueBuffer;
+  private final ZbRocksDb zbRocksDb;
 
-  private final StateController rocksDbWrapper;
-
-  public PersistenceHelper(StateController rocksDbWrapper) {
-    this.rocksDbWrapper = rocksDbWrapper;
+  public PersistenceHelper(ZbRocksDb zbRocksDb) {
+    this.zbRocksDb = zbRocksDb;
+    this.valueBuffer = new ExpandableArrayBuffer();
   }
 
   public <T extends BufferReader> T getValueInstance(
@@ -38,11 +40,10 @@ public class PersistenceHelper {
       ColumnFamilyHandle handle,
       DirectBuffer keyBuffer,
       int keyOffset,
-      int keyLength,
-      DirectBuffer valueBuffer) {
+      int keyLength) {
     final int valueLength = valueBuffer.capacity();
     final int readBytes =
-        rocksDbWrapper.get(
+        zbRocksDb.get(
             handle,
             keyBuffer.byteArray(),
             keyOffset,
@@ -53,7 +54,7 @@ public class PersistenceHelper {
 
     if (readBytes >= valueLength) {
       valueBuffer.checkLimit(readBytes);
-      return getValueInstance(clazz, handle, keyBuffer, keyOffset, keyLength, valueBuffer);
+      return getValueInstance(clazz, handle, keyBuffer, keyOffset, keyLength);
     } else if (readBytes <= 0) {
       return null;
     } else {
@@ -62,9 +63,26 @@ public class PersistenceHelper {
         instance.wrap(valueBuffer, 0, readBytes);
         return instance;
       } catch (Exception ex) {
-        Loggers.STREAM_PROCESSING.error("Error in instantiating class " + clazz.getName(), ex);
+        Loggers.LOGSTREAMS_LOGGER.error("Error in instantiating class " + clazz.getName(), ex);
         return null;
       }
+    }
+  }
+
+  public <T extends BufferReader> boolean readInto(
+      T valueReader, ColumnFamilyHandle handle, byte[] key, int keyOffset, int keyLength) {
+    final int valueLength = valueBuffer.capacity();
+    final int readBytes =
+        zbRocksDb.get(handle, key, keyOffset, keyLength, valueBuffer.byteArray(), 0, valueLength);
+
+    if (readBytes >= valueLength) {
+      valueBuffer.checkLimit(readBytes);
+      return readInto(valueReader, handle, key, keyOffset, keyLength);
+    } else if (readBytes <= 0) {
+      return false;
+    } else {
+      valueReader.wrap(valueBuffer, 0, readBytes);
+      return true;
     }
   }
 }

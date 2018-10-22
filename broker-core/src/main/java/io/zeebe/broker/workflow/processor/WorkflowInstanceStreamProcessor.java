@@ -41,8 +41,6 @@ import io.zeebe.broker.workflow.processor.message.CorrelateWorkflowInstanceSubsc
 import io.zeebe.broker.workflow.processor.message.OpenWorkflowInstanceSubscriptionProcessor;
 import io.zeebe.broker.workflow.state.WorkflowState;
 import io.zeebe.logstreams.processor.StreamProcessorContext;
-import io.zeebe.logstreams.state.StateSnapshotController;
-import io.zeebe.logstreams.state.StateStorage;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.protocol.clientapi.ValueType;
 import io.zeebe.protocol.intent.JobIntent;
@@ -95,10 +93,6 @@ public class WorkflowInstanceStreamProcessor implements StreamProcessorLifecycle
     addDeploymentStreamProcessors(streamProcessorBuilder, partitionId);
 
     return streamProcessorBuilder.withStateController(workflowState).withListener(this).build();
-  }
-
-  public StateSnapshotController createSnapshotController(final StateStorage storage) {
-    return new StateSnapshotController(workflowState, storage);
   }
 
   private void addDeploymentStreamProcessors(

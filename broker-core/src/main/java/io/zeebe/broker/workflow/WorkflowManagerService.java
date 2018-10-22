@@ -37,8 +37,6 @@ import io.zeebe.broker.workflow.repository.GetWorkflowControlMessageHandler;
 import io.zeebe.broker.workflow.repository.ListWorkflowsControlMessageHandler;
 import io.zeebe.broker.workflow.repository.WorkflowRepositoryService;
 import io.zeebe.broker.workflow.state.WorkflowState;
-import io.zeebe.logstreams.state.StateSnapshotController;
-import io.zeebe.logstreams.state.StateStorage;
 import io.zeebe.protocol.Protocol;
 import io.zeebe.servicecontainer.Injector;
 import io.zeebe.servicecontainer.Service;
@@ -127,14 +125,8 @@ public class WorkflowManagerService implements Service<WorkflowManagerService> {
     final DistributionStreamProcessor distributionStreamProcessor =
         new DistributionStreamProcessor(clusterCfg, topologyManager, managementApi);
 
-    final StateStorage stateStorage =
-        partition.getStateStorageFactory().create(deploymentProcessorId, processorName);
-    final StateSnapshotController stateSnapshotController =
-        distributionStreamProcessor.createStateSnapshotController(stateStorage);
-
     streamProcessorServiceBuilder
         .processor(distributionStreamProcessor.createStreamProcessor(streamEnvironment))
-        .snapshotController(stateSnapshotController)
         .build();
   }
 
@@ -153,17 +145,9 @@ public class WorkflowManagerService implements Service<WorkflowManagerService> {
     final TypedStreamEnvironment env =
         new TypedStreamEnvironment(partition.getLogStream(), transport.getOutput());
 
-    final StateStorage stateStorage =
-        partition
-            .getStateStorageFactory()
-            .create(WORKFLOW_INSTANCE_PROCESSOR_ID, WORKFLOW_INSTANCE_PROCESSOR_NAME);
-    final StateSnapshotController snapshotController =
-        streamProcessor.createSnapshotController(stateStorage);
-
     streamProcessorServiceFactory
         .createService(partition, partitionServiceName)
         .processor(streamProcessor.createStreamProcessor(env))
-        .snapshotController(snapshotController)
         .processorId(WORKFLOW_INSTANCE_PROCESSOR_ID)
         .processorName(WORKFLOW_INSTANCE_PROCESSOR_NAME)
         .build();

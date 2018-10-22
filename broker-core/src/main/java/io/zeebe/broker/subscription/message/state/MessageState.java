@@ -21,7 +21,7 @@ import static io.zeebe.broker.workflow.state.PersistenceHelper.EXISTENCE;
 import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 
 import io.zeebe.broker.subscription.message.data.MessageSubscriptionRecord;
-import io.zeebe.broker.util.KeyStateController;
+import io.zeebe.broker.util.KeyState;
 import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.logstreams.rocksdb.ZbWriteBatch;
 import java.io.File;
@@ -39,7 +39,7 @@ import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.WriteOptions;
 
-public class MessageStateController extends KeyStateController {
+public class MessageState extends KeyState {
 
   private static final byte[] MESSAGE_COLUMN_FAMILY_NAME = "messages".getBytes();
   private static final byte[] DEADLINE_COLUMN_FAMILY_NAME = "deadlines".getBytes();
@@ -100,7 +100,8 @@ public class MessageStateController extends KeyStateController {
   }
 
   @Override
-  protected RocksDB openDb(DBOptions dbOptions) throws RocksDBException {
+  protected RocksDB openDbWithColumnFamiliesAndOptions(DBOptions dbOptions)
+      throws RocksDBException {
     db =
         ZbRocksDb.open(
             dbOptions, dbDirectory.getAbsolutePath(), columnFamilyDescriptors, columnFamilyHandles);
