@@ -57,10 +57,32 @@ public class StateSnapshotController implements SnapshotController {
   public StateSnapshotMetadata recover(
       long commitPosition, int term, Predicate<StateSnapshotMetadata> filter) throws Exception {
     final File runtimeDirectory = storage.getRuntimeDirectory();
+    if (runtimeDirectory.exists()) {
+      controller.delete(runtimeDirectory);
+    }
+
+    StateSnapshotMetadata recoveredMetadata = recoverMetadata(commitPosition, filter);
+
+    final boolean hasRecoveredMetadata = recoveredMetadata != null;
+    if (hasRecoveredMetadata) {
+      final File snapshotPath = storage.getSnapshotDirectoryFor(recoveredMetadata);
+      copySnapshot(runtimeDirectory, snapshotPath);
+    } else {
+      recoveredMetadata = StateSnapshotMetadata.createInitial(term);
+    }
+
+    controller.open(runtimeDirectory, hasRecoveredMetadata);
+
+    return recoveredMetadata;
+  }
+
+  private StateSnapshotMetadata recoverMetadata(
+      long commitPosition, Predicate<StateSnapshotMetadata> filter) {
     final List<StateSnapshotMetadata> snapshots = storage.listRecoverable(commitPosition);
     StateSnapshotMetadata recoveredMetadata = null;
 
-    if (!snapshots.isEmpty()) {
+    final boolean hasSnapshots = !snapshots.isEmpty();
+    if (hasSnapshots) {
       recoveredMetadata =
           snapshots
               .stream()
@@ -69,21 +91,6 @@ public class StateSnapshotController implements SnapshotController {
               .findFirst()
               .orElse(null);
     }
-
-    if (runtimeDirectory.exists()) {
-      controller.delete(runtimeDirectory);
-    }
-
-    if (recoveredMetadata != null) {
-      final File snapshotPath = storage.getSnapshotDirectoryFor(recoveredMetadata);
-      copySnapshot(runtimeDirectory, snapshotPath);
-
-      controller.open(runtimeDirectory, true);
-    } else {
-      recoveredMetadata = StateSnapshotMetadata.createInitial(term);
-      controller.open(runtimeDirectory, false);
-    }
-
     return recoveredMetadata;
   }
 
