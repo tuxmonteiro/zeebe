@@ -18,6 +18,7 @@ package io.zeebe.logstreams.state;
 import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 
 import io.zeebe.logstreams.impl.Loggers;
+import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.util.ByteValue;
 import io.zeebe.util.LangUtil;
 import io.zeebe.util.buffer.BufferWriter;
@@ -68,7 +69,7 @@ public class StateController implements AutoCloseable {
 
   private final MutableDirectBuffer dbLongBuffer = new UnsafeBuffer(new byte[Long.BYTES]);
   private boolean isOpened = false;
-  private RocksDB db;
+  private ZbRocksDb db;
   protected File dbDirectory;
   protected List<AutoCloseable> closeables = new ArrayList<>();
 
@@ -80,11 +81,7 @@ public class StateController implements AutoCloseable {
 
   private long nativeHandle_;
 
-  static {
-    RocksDB.loadLibrary();
-  }
-
-  public RocksDB open(final File dbDirectory, final boolean reopen) throws Exception {
+  public ZbRocksDb open(final File dbDirectory, final boolean reopen) throws Exception {
     if (!isOpened) {
       try {
         this.dbDirectory = dbDirectory;
@@ -110,11 +107,11 @@ public class StateController implements AutoCloseable {
     return db;
   }
 
-  protected RocksDB openDb(final Options options) throws RocksDBException {
-    return RocksDB.open(options, dbDirectory.getAbsolutePath());
+  protected ZbRocksDb openDb(final Options options) throws RocksDBException {
+    return ZbRocksDb.open(options, dbDirectory.getAbsolutePath());
   }
 
-  protected RocksDB open(
+  protected ZbRocksDb open(
       final File dbDirectory, final boolean reopen, List<byte[]> columnFamilyNames)
       throws Exception {
     if (!isOpened) {
@@ -148,8 +145,8 @@ public class StateController implements AutoCloseable {
     return db;
   }
 
-  protected RocksDB openDb(DBOptions dbOptions) throws RocksDBException {
-    return RocksDB.open(
+  protected ZbRocksDb openDb(DBOptions dbOptions) throws RocksDBException {
+    return ZbRocksDb.open(
         dbOptions, dbDirectory.getAbsolutePath(), columnFamilyDescriptors, columnFamilyHandles);
   }
 

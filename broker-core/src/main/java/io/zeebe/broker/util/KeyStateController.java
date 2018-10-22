@@ -20,6 +20,7 @@ package io.zeebe.broker.util;
 import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 import static io.zeebe.util.StringUtil.getBytes;
 
+import io.zeebe.logstreams.rocksdb.ZbRocksDb;
 import io.zeebe.logstreams.state.StateController;
 import java.io.File;
 import java.util.Arrays;
@@ -63,10 +64,10 @@ public class KeyStateController extends StateController {
   }
 
   @Override
-  public RocksDB open(File dbDirectory, boolean reopen, List<byte[]> columnFamilyNames)
+  public ZbRocksDb open(File dbDirectory, boolean reopen, List<byte[]> columnFamilyNames)
       throws Exception {
     columnFamilyNames.add(KEY_HANDLE_NAME);
-    final RocksDB rocksDB = super.open(dbDirectory, reopen, columnFamilyNames);
+    final ZbRocksDb rocksDB = super.open(dbDirectory, reopen, columnFamilyNames);
 
     keyHandle = getColumnFamilyHandle(KEY_HANDLE_NAME);
 
