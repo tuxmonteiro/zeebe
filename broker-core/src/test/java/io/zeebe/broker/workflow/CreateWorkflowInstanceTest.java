@@ -341,7 +341,7 @@ public class CreateWorkflowInstanceTest {
     testClient.deploy(Bpmn.createExecutableProcess("process").startEvent().endEvent().done());
 
     // when
-    final byte[] invalidPayload = MsgPackUtil.asMsgPack("'foo'");
+    final byte[] invalidPayload = MsgPackUtil.asMsgPackArray("'foo'");
 
     final Throwable throwable =
         catchThrowable(

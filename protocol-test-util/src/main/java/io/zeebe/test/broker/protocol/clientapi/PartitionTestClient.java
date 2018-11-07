@@ -150,7 +150,7 @@ public class PartitionTestClient {
   }
 
   public long createWorkflowInstance(final String bpmnProcessId, final String jsonPayload) {
-    return createWorkflowInstance(bpmnProcessId, MsgPackUtil.asMsgPack(jsonPayload));
+    return createWorkflowInstance(bpmnProcessId, MsgPackUtil.asMsgPackArray(jsonPayload));
   }
 
   public long createWorkflowInstance(final String bpmnProcessId, final DirectBuffer payload) {
@@ -187,7 +187,7 @@ public class PartitionTestClient {
   }
 
   public void updatePayload(final long elementInstanceKey, final String jsonPayload) {
-    updatePayload(elementInstanceKey, MsgPackUtil.asMsgPack(jsonPayload));
+    updatePayload(elementInstanceKey, MsgPackUtil.asMsgPackArray(jsonPayload));
   }
 
   public void updatePayload(final long elementInstanceKey, final byte[] payload) {
@@ -239,7 +239,7 @@ public class PartitionTestClient {
   }
 
   public void completeJobOfType(final String jobType, final String jsonPayload) {
-    completeJob(jobType, MsgPackUtil.asMsgPack(jsonPayload), e -> true);
+    completeJob(jobType, MsgPackUtil.asMsgPackArray(jsonPayload), e -> true);
   }
 
   public void completeJobOfWorkflowInstance(
@@ -251,7 +251,7 @@ public class PartitionTestClient {
   }
 
   public ExecuteCommandResponse completeJob(long key, String payload) {
-    return completeJob(key, MsgPackUtil.asMsgPack(payload));
+    return completeJob(key, MsgPackUtil.asMsgPackArray(payload));
   }
 
   public ExecuteCommandResponse completeJob(long key, byte[] payload) {

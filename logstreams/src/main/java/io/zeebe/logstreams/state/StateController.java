@@ -597,4 +597,12 @@ public class StateController implements AutoCloseable {
       }
     }
   }
+
+  public boolean isEmpty(ColumnFamilyHandle handle)
+  {
+    try (RocksIterator rocksIterator = getDb().newIterator(handle)) {
+      rocksIterator.seekToFirst();
+      return !rocksIterator.isValid();
+    }
+  }
 }

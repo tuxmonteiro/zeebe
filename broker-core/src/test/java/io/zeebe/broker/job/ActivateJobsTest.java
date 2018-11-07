@@ -67,7 +67,7 @@ public class ActivateJobsTest {
 
   public static final String JOB_TYPE = "theJobType";
   public static final String JSON_PAYLOAD = "{\"foo\": \"bar\"}";
-  public static final byte[] PAYLOAD_MSG_PACK = MsgPackUtil.asMsgPack(JSON_PAYLOAD);
+  public static final byte[] PAYLOAD_MSG_PACK = MsgPackUtil.asMsgPackArray(JSON_PAYLOAD);
 
   public EmbeddedBrokerRule brokerRule = new EmbeddedBrokerRule();
 

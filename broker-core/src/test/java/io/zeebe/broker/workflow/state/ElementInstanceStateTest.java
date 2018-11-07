@@ -30,6 +30,9 @@ import io.zeebe.protocol.impl.record.RecordMetadata;
 import io.zeebe.protocol.impl.record.value.workflowinstance.WorkflowInstanceRecord;
 import io.zeebe.protocol.intent.WorkflowInstanceIntent;
 import io.zeebe.test.util.AutoCloseableRule;
+import io.zeebe.test.util.MsgPackUtil;
+import io.zeebe.util.buffer.BufferUtil;
+import net.bytebuddy.build.CachedReturnPlugin.Enhance;
 import java.util.List;
 import org.agrona.DirectBuffer;
 import org.junit.Before;
@@ -467,6 +470,34 @@ public class ElementInstanceStateTest {
 
     // then
     assertThat(elementInstanceState.getDeferredTokens(key)).isEmpty();
+  }
+
+  @Test
+  public void shouldNotLeakMemoryOnRemoval()
+  {
+    // given
+    final int parent = 100;
+    final int child = 101;
+
+    final WorkflowInstanceRecord workflowInstanceRecord = createWorkflowInstanceRecord();
+    final ElementInstance parentInstance =
+        elementInstanceState.newInstance(
+            parent, workflowInstanceRecord, WorkflowInstanceIntent.ELEMENT_ACTIVATED);
+    elementInstanceState.getVariablesState().setVariableLocal(parent, BufferUtil.wrapString("a"), MsgPackUtil.asMsgPack("1"));
+
+    workflowInstanceRecord.setElementId("subProcess");
+    elementInstanceState.newInstance(
+        parentInstance, child, workflowInstanceRecord, WorkflowInstanceIntent.ELEMENT_READY);
+    elementInstanceState.getVariablesState().setVariableLocal(child, BufferUtil.wrapString("b"), MsgPackUtil.asMsgPack("2"));
+
+    elementInstanceState.flushDirtyState();
+
+    // when
+    elementInstanceState.removeInstance(101);
+    elementInstanceState.removeInstance(100);
+
+    // then
+    assertThat(elementInstanceState.isEmpty()).isTrue();
   }
 
   private TypedRecord<WorkflowInstanceRecord> mockTypedRecord() {
