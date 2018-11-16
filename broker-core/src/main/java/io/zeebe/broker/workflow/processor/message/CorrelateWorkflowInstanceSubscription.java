@@ -164,6 +164,7 @@ public final class CorrelateWorkflowInstanceSubscription
     }
 
     sideEffect.accept(this::sendAcknowledgeCommand);
+
     workflowState.getElementInstanceState().flushDirtyState();
   }
 

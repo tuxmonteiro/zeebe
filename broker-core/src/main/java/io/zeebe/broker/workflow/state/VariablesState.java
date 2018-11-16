@@ -32,6 +32,8 @@ import org.agrona.BitUtil;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.collections.Int2IntHashMap;
+import org.agrona.collections.Int2IntHashMap.EntryIterator;
 import org.agrona.collections.ObjectHashSet;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.rocksdb.ColumnFamilyHandle;
@@ -65,6 +67,9 @@ public class VariablesState {
   private ObjectHashSet<DirectBuffer> collectedVariables = new ObjectHashSet<>();
   private ObjectHashSet<DirectBuffer> variablesToCollect = new ObjectHashSet<>();
 
+  // setting variables
+  private IndexedDocument indexedDocument = new IndexedDocument();
+
   public VariablesState(
       StateController stateController,
       ColumnFamilyHandle elementChildParentHandle,
@@ -90,6 +95,58 @@ public class VariablesState {
 
       setVariableLocal(
           scopeKey, document, nameOffset, nameLength, document, valueOffset, valueLength);
+    }
+  }
+
+  public void setVariablesFromDocument(long scopeKey, DirectBuffer document) {
+    // 1. index entries in the document
+    indexedDocument.index(document);
+
+    long currentScope = scopeKey;
+    long parentScope;
+
+    // 2. overwrite any variables in the scope hierarchy
+    while (indexedDocument.hasEntries() && (parentScope = getParent(currentScope)) > 0) {
+      final DocumentEntryIterator entryIterator = indexedDocument.iterator();
+
+      while (entryIterator.hasNext()) {
+        entryIterator.next();
+
+        final boolean variableSet =
+            setVariableLocalIfExists(
+                currentScope,
+                document,
+                entryIterator.getNameOffset(),
+                entryIterator.getNameLength(),
+                document,
+                entryIterator.getValueOffset(),
+                entryIterator.getValueLength());
+
+        if (variableSet) {
+          entryIterator.remove();
+        }
+
+        currentScope = parentScope;
+      }
+      currentScope = parentScope;
+    }
+
+    // 3. set remaining variables on top scope
+    if (indexedDocument.hasEntries()) {
+      final DocumentEntryIterator entryIterator = indexedDocument.iterator();
+
+      while (entryIterator.hasNext()) {
+        entryIterator.next();
+
+        setVariableLocal(
+            currentScope,
+            document,
+            entryIterator.getNameOffset(),
+            entryIterator.getNameLength(),
+            document,
+            entryIterator.getValueOffset(),
+            entryIterator.getValueLength());
+      }
     }
   }
 
@@ -121,6 +178,39 @@ public class VariablesState {
         stateValueBuffer.byteArray(),
         0,
         valueLength);
+  }
+
+  /** @return true if the variable was set */
+  private boolean setVariableLocalIfExists(
+      long scopeKey,
+      DirectBuffer name,
+      int nameOffset,
+      int nameLength,
+      DirectBuffer value,
+      int valueOffset,
+      int valueLength) {
+    stateKeyBuffer.putLong(
+        VARIABLES_SCOPE_KEY_OFFSET, scopeKey, ZeebeStateConstants.STATE_BYTE_ORDER);
+    stateKeyBuffer.putBytes(VARIABLES_NAME_OFFSET, name, nameOffset, nameLength);
+
+    final int keyLength = VARIABLES_NAME_OFFSET + nameLength;
+
+    if (stateController.exist(variablesHandle, stateKeyBuffer.byteArray(), 0, keyLength)) {
+      stateValueBuffer.putBytes(0, value, valueOffset, valueLength);
+
+      stateController.put(
+          variablesHandle,
+          stateKeyBuffer.byteArray(),
+          0,
+          keyLength,
+          stateValueBuffer.byteArray(),
+          0,
+          valueLength);
+
+      return true;
+    } else {
+      return false;
+    }
   }
 
   public DirectBuffer getVariableLocal(long scopeKey, DirectBuffer name) {
@@ -348,6 +438,107 @@ public class VariablesState {
     private void close() {
       rocksDbIterator.close();
       rocksDbIterator = null;
+    }
+  }
+
+  private class IndexedDocument implements Iterable<Void> {
+    // variable name offset -> variable value offset
+    private Int2IntHashMap entries = new Int2IntHashMap(-1);
+    private DocumentEntryIterator iterator = new DocumentEntryIterator();
+    private DirectBuffer document;
+
+    public void index(DirectBuffer document) {
+      this.document = document;
+      entries.clear();
+      final int documentLength = document.capacity();
+
+      reader.wrap(document, 0, documentLength);
+
+      final int variables = reader.readMapHeader();
+
+      for (int i = 0; i < variables; i++) {
+        final int keyOffset = reader.getOffset();
+        reader.skipValue();
+        final int valueOffset = reader.getOffset();
+        reader.skipValue();
+
+        entries.put(keyOffset, valueOffset);
+      }
+    }
+
+    @Override
+    public DocumentEntryIterator iterator() {
+      iterator.wrap(document, entries.entrySet().iterator());
+      return iterator;
+    }
+
+    public boolean hasEntries() {
+      return !entries.isEmpty();
+    }
+  }
+
+  private class DocumentEntryIterator implements Iterator<Void> {
+    private EntryIterator iterator;
+    private DirectBuffer document;
+    private int documentLength;
+
+    // per entry
+    private int nameOffset;
+    private int nameLength;
+    private int valueOffset;
+    private int valueLength;
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+
+    public void wrap(DirectBuffer document, EntryIterator iterator) {
+      this.iterator = iterator;
+      this.document = document;
+      this.documentLength = document.capacity();
+    }
+
+    /** excluding string header */
+    public int getNameOffset() {
+      return nameOffset;
+    }
+
+    public int getNameLength() {
+      return nameLength;
+    }
+
+    /** including header */
+    public int getValueOffset() {
+      return valueOffset;
+    }
+
+    public int getValueLength() {
+      return valueLength;
+    }
+
+    @Override
+    public Void next() {
+      iterator.next();
+
+      final int keyOffset = iterator.getIntKey();
+      valueOffset = iterator.getIntValue();
+
+      reader.wrap(document, keyOffset, documentLength - keyOffset);
+
+      nameLength = reader.readStringLength();
+      nameOffset = keyOffset + reader.getOffset();
+
+      reader.wrap(document, valueOffset, documentLength - valueOffset);
+      reader.skipValue();
+      valueLength = reader.getOffset();
+
+      return null;
+    }
+
+    @Override
+    public void remove() {
+      iterator.remove();
     }
   }
 }

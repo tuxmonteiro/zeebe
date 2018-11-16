@@ -59,6 +59,11 @@ public class CreateWorkflowInstanceHandler implements WorkflowInstanceCommandHan
       eventOutput.appendFollowUpEvent(
           workflowInstanceKey, WorkflowInstanceIntent.ELEMENT_READY, command);
 
+      workflowState
+          .getElementInstanceState()
+          .getVariablesState()
+          .setVariablesLocalFromDocument(workflowInstanceKey, command.getPayload());
+
       responseWriter.writeEventOnCommand(
           workflowInstanceKey, WorkflowInstanceIntent.ELEMENT_READY, command, record);
     } else {

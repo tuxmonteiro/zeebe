@@ -21,13 +21,20 @@ import io.zeebe.broker.workflow.model.element.ExecutableIntermediateCatchElement
 import io.zeebe.broker.workflow.processor.BpmnStepContext;
 import io.zeebe.broker.workflow.processor.BpmnStepHandler;
 import io.zeebe.broker.workflow.processor.flownode.IOMappingHelper;
+import io.zeebe.broker.workflow.state.WorkflowState;
 import io.zeebe.msgpack.mapping.MappingException;
 import io.zeebe.protocol.impl.record.value.incident.ErrorType;
 import io.zeebe.protocol.intent.WorkflowInstanceIntent;
 
 public class TriggerEventBasedGatewayHandler
     implements BpmnStepHandler<ExecutableIntermediateCatchElement> {
+
+  private final WorkflowState state;
   private final IOMappingHelper ioMappingHelper = new IOMappingHelper();
+
+  public TriggerEventBasedGatewayHandler(WorkflowState state) {
+    this.state = state;
+  }
 
   @Override
   public void handle(BpmnStepContext<ExecutableIntermediateCatchElement> context) {
@@ -35,7 +42,7 @@ public class TriggerEventBasedGatewayHandler
     context.getCatchEventOutput().unsubscribeFromCatchEvents(context.getRecord().getKey(), context);
 
     try {
-      ioMappingHelper.applyOutputMappings(context);
+      ioMappingHelper.applyOutputMappings(state, context);
 
       context
           .getOutput()

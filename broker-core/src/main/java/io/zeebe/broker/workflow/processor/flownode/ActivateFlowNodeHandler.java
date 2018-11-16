@@ -20,17 +20,25 @@ package io.zeebe.broker.workflow.processor.flownode;
 import io.zeebe.broker.workflow.model.element.ExecutableFlowNode;
 import io.zeebe.broker.workflow.processor.BpmnStepContext;
 import io.zeebe.broker.workflow.processor.BpmnStepHandler;
+import io.zeebe.broker.workflow.state.WorkflowState;
 import io.zeebe.msgpack.mapping.MappingException;
 import io.zeebe.protocol.impl.record.value.incident.ErrorType;
 import io.zeebe.protocol.intent.WorkflowInstanceIntent;
 
 public class ActivateFlowNodeHandler<T extends ExecutableFlowNode> implements BpmnStepHandler<T> {
+
   private final IOMappingHelper ioMappingHelper = new IOMappingHelper();
+  private final WorkflowState state;
+
+  public ActivateFlowNodeHandler(WorkflowState state) {
+    this.state = state;
+  }
 
   @Override
   public void handle(BpmnStepContext<T> context) {
     try {
-      ioMappingHelper.applyInputMappings(context);
+      ioMappingHelper.applyInputMappings(state, context);
+
       activate(context);
 
       context

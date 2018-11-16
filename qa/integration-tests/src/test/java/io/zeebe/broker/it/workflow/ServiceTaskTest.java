@@ -318,6 +318,7 @@ public class ServiceTaskTest {
             client.newCompleteCommand(job.getKey()).payload("{}").send().join();
           }
         };
+
     clientRule.getJobClient().newWorker().jobType("collect-money").handler(defaultHandler).open();
     clientRule
         .getJobClient()
@@ -331,6 +332,7 @@ public class ServiceTaskTest {
     clientRule.getJobClient().newWorker().jobType("ship-parcel").handler(defaultHandler).open();
 
     // then
+
     assertWorkflowInstanceCompleted(
         "order-process",
         (workflowEvent) -> assertThat(workflowEvent.getPayload()).isEqualTo("{\"foo\":\"bar\"}"));
