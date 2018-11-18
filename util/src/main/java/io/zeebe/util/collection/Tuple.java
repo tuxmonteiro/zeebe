@@ -19,6 +19,8 @@ public class Tuple<L, R> {
   private L left;
   private R right;
 
+  public Tuple() {}
+
   public Tuple(L left, R right) {
     this.right = right;
     this.left = left;

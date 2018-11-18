@@ -80,6 +80,32 @@ public class ZbRocksDb extends RocksDB {
   }
 
   public static ZbRocksDb open(
+      final String path,
+      final DBOptions options,
+      final byte[][] columnFamilyNames,
+      final long[] columnFamilyOptionsHandles,
+      final List<ColumnFamilyHandle> columnFamilyHandles) {
+    try {
+      final long[] handles =
+          open(getNativeHandle(options), path, columnFamilyNames, columnFamilyOptionsHandles);
+      final ZbRocksDb db = new ZbRocksDb(handles[0]);
+      db.storeOptionsInstance(options);
+
+      for (int i = 1; i < handles.length; i++) {
+        try {
+          columnFamilyHandles.add(COLUMN_FAMILY_HANDLE_CONSTRUCTOR.newInstance(db, handles[i]));
+        } catch (InstantiationException | InvocationTargetException | IllegalAccessException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      return db;
+    } catch (RocksDBException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static ZbRocksDb open(
       final DBOptions options,
       final String path,
       final List<ColumnFamilyDescriptor> columnFamilyDescriptors,
@@ -336,6 +362,14 @@ public class ZbRocksDb extends RocksDB {
 
       batchConsumer.accept(batch);
       write(options, batch);
+    } catch (RocksDBException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public long getEstimatedNumberOfKeys(ColumnFamilyHandle columnFamily) {
+    try {
+      return getLongProperty(columnFamily, "rocksdb.estimate-num-keys");
     } catch (RocksDBException e) {
       throw new RuntimeException(e);
     }
