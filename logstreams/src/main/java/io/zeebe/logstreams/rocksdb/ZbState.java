@@ -15,32 +15,30 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
+import java.util.ArrayList;
 import java.util.List;
-import org.rocksdb.DBOptions;
+import org.rocksdb.ColumnFamilyHandle;
 
-public abstract class ZbState {
-  //  private final ZbRocksDb db;
-  //  private final List<ZbColumn<?, ?>> columns;
-  //
-  //  public ZbState(String path, ) {
-  //    final List<ZbColumnDescriptor<?, ?>> descriptors = getColumnFamilyDescriptors();
-  //    final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>(descriptors.size());
-  //
-  //    final byte[][] mapped
-  //
-  //    try {
-  //      db = ZbRocksDb.open(path, getDBOptions(), descriptors, columnFamilyHandles);
-  //    } catch (RocksDBException e) {
-  //      throw new RuntimeException(e);
-  //    }
-  //
-  //    columns = new ArrayList<>(descriptors.size());
-  //    for (int i = 0; i < columnFamilyHandles.size(); i++) {}
-  //  }
+public class ZbState implements AutoCloseable {
+  private final List<ZbColumn> columns;
+  protected final ZbRocksDb db;
 
-  protected abstract List<ZbColumnDescriptor<?, ?>> getColumnFamilyDescriptors();
+  public ZbState(
+      ZbRocksDb db,
+      List<ColumnFamilyHandle> handles,
+      List<ZbStateColumnDescriptor> columnDescriptors) {
+    this.db = db;
+    this.columns = new ArrayList<>(handles.size());
 
-  protected DBOptions getDBOptions() {
-    return new DBOptions();
+    for (int i = 0; i < handles.size(); i++) {
+      final ZbStateColumnDescriptor descriptor = columnDescriptors.get(i);
+      final ColumnFamilyHandle handle = handles.get(i);
+      columns.add(i, descriptor.get(this, db, handle));
+    }
+  }
+
+  @Override
+  public void close() {
+    columns.forEach(ZbColumn::close);
   }
 }

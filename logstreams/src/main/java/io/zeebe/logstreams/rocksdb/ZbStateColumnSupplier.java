@@ -15,22 +15,9 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyOptions;
+import org.rocksdb.ColumnFamilyHandle;
 
-public class ZbColumnDescriptor<K, V> extends ColumnFamilyDescriptor {
-  private final ZbColumnSupplier<K, V> columnSupplier;
-
-  public ZbColumnDescriptor(byte[] columnFamilyName, ZbColumnSupplier<K, V> columnSupplier) {
-    super(columnFamilyName);
-    this.columnSupplier = columnSupplier;
-  }
-
-  public ZbColumnDescriptor(
-      byte[] columnFamilyName,
-      ColumnFamilyOptions columnFamilyOptions,
-      ZbColumnSupplier<K, V> columnSupplier) {
-    super(columnFamilyName, columnFamilyOptions);
-    this.columnSupplier = columnSupplier;
-  }
+@FunctionalInterface
+public interface ZbStateColumnSupplier<T extends ZbState, C extends ZbColumn> {
+  C get(T state, ZbRocksDb db, ColumnFamilyHandle handle);
 }

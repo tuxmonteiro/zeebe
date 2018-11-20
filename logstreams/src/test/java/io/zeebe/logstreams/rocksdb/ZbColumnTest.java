@@ -15,11 +15,20 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
+import io.zeebe.logstreams.rocksdb.serializers.DirectBufferSerializer;
+import io.zeebe.logstreams.rocksdb.serializers.IntSerializer;
+import io.zeebe.logstreams.rocksdb.serializers.LongSerializer;
+import io.zeebe.logstreams.rocksdb.serializers.TripleSerializer;
+import io.zeebe.util.collection.Triple;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import org.agrona.DirectBuffer;
+import org.agrona.ExpandableArrayBuffer;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
+import org.rocksdb.ColumnFamilyHandle;
 
 public class ZbColumnTest {
   private ZbRocksDb db;
@@ -30,6 +39,22 @@ public class ZbColumnTest {
   @Before
   public void setup() throws IOException {
     final File dbFolder = temporaryFolder.newFolder("db");
+    final List<ZbStateColumnDescriptor> descriptors = TestState.getDescriptors("test".getBytes());
+
     // db = ZbRocksDb.open(dbFolder, )
+  }
+
+  static class TestColumn
+      extends ZbColumn<Triple<Integer, Long, DirectBuffer>, TestUnpackedObject> {
+    public TestColumn(ZbRocksDb db, ColumnFamilyHandle columnFamilyHandle) {
+      super(
+          db,
+          columnFamilyHandle,
+          new ExpandableArrayBuffer(),
+          new TripleSerializer<>(
+              IntSerializer.INSTANCE, LongSerializer.INSTANCE, new DirectBufferSerializer()),
+          new ExpandableArrayBuffer(),
+          new TestUnpackedObject.Serializer());
+    }
   }
 }
