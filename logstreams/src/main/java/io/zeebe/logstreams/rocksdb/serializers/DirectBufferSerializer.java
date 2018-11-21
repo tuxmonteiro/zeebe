@@ -34,9 +34,9 @@ public class DirectBufferSerializer implements Serializer<DirectBuffer> {
   }
 
   @Override
-  public DirectBuffer serialize(DirectBuffer value, MutableDirectBuffer dest, int offset) {
+  public int serialize(DirectBuffer value, MutableDirectBuffer dest, int offset) {
     dest.putBytes(offset, value, 0, value.capacity());
-    return new UnsafeBuffer(dest, 0, value.capacity());
+    return value.capacity();
   }
 
   @Override

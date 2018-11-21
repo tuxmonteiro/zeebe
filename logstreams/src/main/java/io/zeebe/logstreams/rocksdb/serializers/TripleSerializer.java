@@ -20,7 +20,6 @@ import io.zeebe.util.collection.Triple;
 import io.zeebe.util.collection.Tuple;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public class TripleSerializer<L, M, R> extends Composite implements Serializer<Triple<L, M, R>> {
   private final Triple<L, M, R> instance = new Triple<>();
@@ -33,15 +32,15 @@ public class TripleSerializer<L, M, R> extends Composite implements Serializer<T
     this.rightSerializer = rightSerializer;
   }
 
-  public DirectBuffer serializePrefix(L left, MutableDirectBuffer dest, int offset) {
+  public int serializePrefix(L left, MutableDirectBuffer dest, int offset) {
     return tupleSerializer.serializePrefix(left, dest, offset);
   }
 
-  public DirectBuffer serializePrefix(L left, M middle, MutableDirectBuffer dest, int offset) {
+  public int serializePrefix(L left, M middle, MutableDirectBuffer dest, int offset) {
     return serializePrefix(getTuple(left, middle), dest, offset);
   }
 
-  public DirectBuffer serializePrefix(Tuple<L, M> tuple, MutableDirectBuffer dest, int offset) {
+  public int serializePrefix(Tuple<L, M> tuple, MutableDirectBuffer dest, int offset) {
     return tupleSerializer.serialize(tuple, dest, offset);
   }
 
@@ -56,14 +55,14 @@ public class TripleSerializer<L, M, R> extends Composite implements Serializer<T
   }
 
   @Override
-  public DirectBuffer serialize(Triple<L, M, R> value, MutableDirectBuffer dest, int offset) {
+  public int serialize(Triple<L, M, R> value, MutableDirectBuffer dest, int offset) {
     final Tuple<L, M> tuple = getTuple(value.getLeft(), value.getMiddle());
     int cursor = serializeMember(tuple, tupleSerializer, dest, offset);
     cursor = serializeMember(value.getRight(), rightSerializer, dest, cursor);
 
     assert getLength() == VARIABLE_LENGTH || (cursor - offset) == getLength()
         : "End offset differs from expected length";
-    return new UnsafeBuffer(dest, offset, (cursor - offset));
+    return cursor - offset;
   }
 
   @Override

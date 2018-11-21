@@ -25,9 +25,9 @@ public interface Serializer<T> {
 
   int getLength();
 
-  DirectBuffer serialize(T value, MutableDirectBuffer dest, int offset);
+  int serialize(T value, MutableDirectBuffer dest, int offset);
 
-  default DirectBuffer serialize(T value, MutableDirectBuffer dest) {
+  default int serialize(T value, MutableDirectBuffer dest) {
     return serialize(value, dest, 0);
   }
 

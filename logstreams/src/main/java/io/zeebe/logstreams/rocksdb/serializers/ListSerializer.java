@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public class ListSerializer<T> implements Serializer<List<T>> {
   private final List<T> instance = new ArrayList<>(0);
@@ -43,19 +42,18 @@ public class ListSerializer<T> implements Serializer<List<T>> {
   }
 
   @Override
-  public DirectBuffer serialize(List<T> value, MutableDirectBuffer dest, int offset) {
+  public int serialize(List<T> value, MutableDirectBuffer dest, int offset) {
     int cursor = offset;
     dest.putInt(cursor, value.size(), STATE_BYTE_ORDER);
     cursor += Integer.BYTES;
 
     for (final T element : value) {
-      final DirectBuffer serialized =
-          elementSerializer.serialize(element, dest, cursor + Integer.BYTES);
-      dest.putInt(cursor, serialized.capacity(), STATE_BYTE_ORDER);
-      cursor += serialized.capacity() + Integer.BYTES;
+      final int length = elementSerializer.serialize(element, dest, cursor + Integer.BYTES);
+      dest.putInt(cursor, length, STATE_BYTE_ORDER);
+      cursor += length + Integer.BYTES;
     }
 
-    return new UnsafeBuffer(dest, offset, (cursor - offset));
+    return cursor - offset;
   }
 
   @Override

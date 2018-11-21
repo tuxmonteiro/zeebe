@@ -20,16 +20,15 @@ import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 import io.zeebe.logstreams.rocksdb.Serializer;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public class LongSerializer implements Serializer<Long> {
   public static final LongSerializer INSTANCE = new LongSerializer();
   private static final Long ZERO = 0L;
 
   @Override
-  public DirectBuffer serialize(Long value, MutableDirectBuffer dest, int offset) {
+  public int serialize(Long value, MutableDirectBuffer dest, int offset) {
     dest.putLong(offset, value, STATE_BYTE_ORDER);
-    return new UnsafeBuffer(dest, offset, Long.BYTES);
+    return getLength();
   }
 
   @Override

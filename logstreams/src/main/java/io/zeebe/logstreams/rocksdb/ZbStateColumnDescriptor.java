@@ -15,29 +15,25 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
-import io.zeebe.util.ByteArrayUtil;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.ColumnFamilyOptions;
 
 public class ZbStateColumnDescriptor<S extends ZbState, T extends ZbColumn> {
-  private final byte[] name;
-  private final ColumnFamilyOptions options;
   private final ZbStateColumnSupplier<S, T> columnSupplier;
+  private final ColumnFamilyDescriptor columnFamilyDescriptor;
 
   public ZbStateColumnDescriptor(
       byte[] name, ColumnFamilyOptions options, ZbStateColumnSupplier<S, T> columnSupplier) {
-    this.name = name;
-    this.options = options;
     this.columnSupplier = columnSupplier;
+    this.columnFamilyDescriptor = new ColumnFamilyDescriptor(name, options);
   }
 
   public T get(S state, ZbRocksDb db, ColumnFamilyHandle handle) {
     return columnSupplier.get(state, db, handle);
   }
 
-  public ColumnFamilyDescriptor getColumnFamilyDescriptor(byte[] prefix) {
-    final byte[] prefixedName = ByteArrayUtil.concat(prefix, name);
-    return new ColumnFamilyDescriptor(prefixedName, options);
+  public ColumnFamilyDescriptor getColumnFamilyDescriptor() {
+    return columnFamilyDescriptor;
   }
 }

@@ -19,13 +19,12 @@ import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.msgpack.UnpackedObject;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public abstract class UnpackedObjectSerializer<T extends UnpackedObject> implements Serializer<T> {
   @Override
-  public DirectBuffer serialize(T value, MutableDirectBuffer dest, int offset) {
+  public int serialize(T value, MutableDirectBuffer dest, int offset) {
     value.write(dest, offset);
-    return new UnsafeBuffer(dest, offset, value.getLength());
+    return value.getLength();
   }
 
   @Override

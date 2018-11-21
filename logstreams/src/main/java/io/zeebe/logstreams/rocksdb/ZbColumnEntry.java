@@ -41,10 +41,10 @@ public class ZbColumnEntry<K, V> {
   }
 
   public void setKey(DirectBuffer keyBuffer, int offset, int length) {
-    key = column.getKeySerializer().deserialize(keyBuffer, offset, length);
+    key = column.deserializeKey(keyBuffer, offset, length);
   }
 
   public void setValue(DirectBuffer valueBuffer, int offset, int length) {
-    value = column.getValueSerializer().deserialize(valueBuffer, offset, length);
+    value = column.deserializeValue(valueBuffer, offset, length);
   }
 }

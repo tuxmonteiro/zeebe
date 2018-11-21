@@ -19,7 +19,6 @@ import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.util.collection.Tuple;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
-import org.agrona.concurrent.UnsafeBuffer;
 
 public class TupleSerializer<L, R> extends Composite implements Serializer<Tuple<L, R>> {
   private final Tuple<L, R> instance = new Tuple<>();
@@ -31,9 +30,9 @@ public class TupleSerializer<L, R> extends Composite implements Serializer<Tuple
     this.rightSerializer = rightSerializer;
   }
 
-  public DirectBuffer serializePrefix(L left, MutableDirectBuffer dest, int offset) {
+  public int serializePrefix(L left, MutableDirectBuffer dest, int offset) {
     final int cursor = serializeMember(left, leftSerializer, dest, offset);
-    return new UnsafeBuffer(dest, offset, (cursor - offset));
+    return cursor - offset;
   }
 
   @Override
@@ -47,13 +46,13 @@ public class TupleSerializer<L, R> extends Composite implements Serializer<Tuple
   }
 
   @Override
-  public DirectBuffer serialize(Tuple<L, R> value, MutableDirectBuffer dest, int offset) {
+  public int serialize(Tuple<L, R> value, MutableDirectBuffer dest, int offset) {
     int cursor = serializeMember(value.getLeft(), leftSerializer, dest, offset);
     cursor = serializeMember(value.getRight(), rightSerializer, dest, cursor);
 
     assert getLength() == VARIABLE_LENGTH || (cursor - offset) == getLength()
         : "End offset differs from expected length";
-    return new UnsafeBuffer(dest, offset, (cursor - offset));
+    return cursor - offset;
   }
 
   @Override
