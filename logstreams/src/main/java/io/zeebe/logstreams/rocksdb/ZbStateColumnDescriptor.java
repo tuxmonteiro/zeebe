@@ -23,6 +23,11 @@ public class ZbStateColumnDescriptor<S extends ZbState, T extends ZbColumn> {
   private final ZbStateColumnSupplier<S, T> columnSupplier;
   private final ColumnFamilyDescriptor columnFamilyDescriptor;
 
+  public ZbStateColumnDescriptor(byte[] name, ZbStateColumnSupplier<S, T> columnSupplier) {
+    this.columnSupplier = columnSupplier;
+    this.columnFamilyDescriptor = new ColumnFamilyDescriptor(name, ZbColumn.DEFAULT_OPTIONS);
+  }
+
   public ZbStateColumnDescriptor(
       byte[] name, ColumnFamilyOptions options, ZbStateColumnSupplier<S, T> columnSupplier) {
     this.columnSupplier = columnSupplier;

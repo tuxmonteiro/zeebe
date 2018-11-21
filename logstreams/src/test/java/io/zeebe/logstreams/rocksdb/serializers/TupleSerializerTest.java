@@ -17,12 +17,12 @@ package io.zeebe.logstreams.rocksdb.serializers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.util.buffer.BufferUtil;
 import io.zeebe.util.collection.Tuple;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
 
 public class TupleSerializerTest {
@@ -36,7 +36,7 @@ public class TupleSerializerTest {
         new TupleSerializer<>(new LongSerializer(), new DirectBufferSerializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(original, buffer);
+    final DirectBuffer serialized = serializer.serializeInto(original, buffer, new UnsafeBuffer());
     final Tuple<Long, DirectBuffer> deserialized = serializer.deserialize(serialized);
 
     // then
@@ -52,8 +52,9 @@ public class TupleSerializerTest {
         new TupleSerializer<>(new LongSerializer(), new DirectBufferSerializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(data, buffer, 0);
-    final DirectBuffer prefix = serializer.serializePrefix(1L, buffer, serialized.capacity());
+    final DirectBuffer serialized = serializer.serializeInto(data, buffer, 0, new UnsafeBuffer());
+    final DirectBuffer prefix =
+        serializer.serializePrefixInto(1L, buffer, serialized.capacity(), new UnsafeBuffer());
 
     // then
     assertThat(BufferUtil.startsWith(serialized, prefix)).isTrue();

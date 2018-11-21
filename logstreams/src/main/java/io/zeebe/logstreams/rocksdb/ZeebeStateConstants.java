@@ -22,7 +22,7 @@ public class ZeebeStateConstants {
   /**
    * The byte order is used to write primitive data types into rocks db key or value buffers.
    *
-   * <p>Be aware that {@link ByteOrder.LITTLE_ENDIAN} will reverse the ordering. If the keys start
+   * <p>Be aware that {@link ByteOrder#LITTLE_ENDIAN} will reverse the ordering. If the keys start
    * with an long, like an timestamp, and the implementation depends on the correct ordering, then
    * this could be a problem.
    *
@@ -30,7 +30,7 @@ public class ZeebeStateConstants {
    * 0000 00001 0000 0000 and 256 = 0000 0000 0000 0001. This means that 256 will be sorted before 1
    * in Rocks DB, because the first byte is smaller.
    *
-   * <p>We use {@link ByteOrder.BIG_ENDIAN} for the ascending ordering.
+   * <p>We use {@link ByteOrder#BIG_ENDIAN} for the ascending ordering.
    */
   public static final ByteOrder STATE_BYTE_ORDER = ByteOrder.BIG_ENDIAN;
 }

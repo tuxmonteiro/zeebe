@@ -15,46 +15,157 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
-import io.zeebe.logstreams.rocksdb.serializers.DirectBufferSerializer;
-import io.zeebe.logstreams.rocksdb.serializers.IntSerializer;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+
+import io.zeebe.logstreams.rocksdb.serializers.BooleanSerializer;
 import io.zeebe.logstreams.rocksdb.serializers.LongSerializer;
-import io.zeebe.logstreams.rocksdb.serializers.TripleSerializer;
-import io.zeebe.util.collection.Triple;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import org.agrona.DirectBuffer;
-import org.agrona.ExpandableArrayBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.Options;
+import org.rocksdb.RocksDBException;
 
 public class ZbColumnTest {
   private ZbRocksDb db;
-  private TestColumn column;
+  private Column column;
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Before
-  public void setup() throws IOException {
+  public void setup() throws IOException, RocksDBException {
     final File dbFolder = temporaryFolder.newFolder("db");
-    final List<ZbStateColumnDescriptor> descriptors = TestState.getDescriptors("test".getBytes());
-
-    // db = ZbRocksDb.open(dbFolder, )
+    db = ZbRocksDb.open(new Options().setCreateIfMissing(true), dbFolder.getAbsolutePath());
+    column = new Column(db, db.getDefaultColumnFamily());
   }
 
-  static class TestColumn
-      extends ZbColumn<Triple<Integer, Long, DirectBuffer>, TestUnpackedObject> {
-    public TestColumn(ZbRocksDb db, ColumnFamilyHandle columnFamilyHandle) {
+  @After
+  public void teardown() {
+    column.close();
+    db.close();
+  }
+
+  @Test
+  public void shouldSerializeAndDeserializeKey() {
+    // given
+    final DirectBuffer serialized = column.serializeKey(1L);
+
+    // when
+    final long key = column.deserializeKey(serialized, 0, Long.BYTES);
+
+    // then
+    assertThat(key).isEqualTo(1L);
+  }
+
+  @Test
+  public void shouldSerializeAndDeserializeValue() {
+    // given
+    final DirectBuffer serialized = column.serializeValue(false);
+
+    // when
+    final boolean value = column.deserializeValue(serialized, 0, Long.BYTES);
+
+    // then
+    assertThat(value).isEqualTo(false);
+  }
+
+  @Test
+  public void shouldPutAndGetKeyValuePair() {
+    // given
+    final long key = 256L;
+    final boolean value = true;
+
+    // when
+    column.put(key, value);
+
+    // then
+    assertThat(column.get(key)).isEqualTo(value);
+  }
+
+  @Test
+  public void shouldReturnNullIfNoSuchKey() {
+    // given
+    final long key = 256L;
+
+    // then
+    assertThat(column.get(key)).isNull();
+  }
+
+  @Test
+  public void shouldDeleteKey() {
+    // given
+    final long key = 256L;
+    final boolean value = true;
+
+    // when
+    column.put(key, value);
+    column.delete(key);
+
+    // then
+    assertThat(column.exists(key)).isFalse();
+  }
+
+  @Test
+  public void shouldExist() {
+    // given
+    final long key = 256L;
+    final boolean value = true;
+
+    // when
+    column.put(key, value);
+
+    // then
+    assertThat(column.exists(key)).isTrue();
+  }
+
+  @Test
+  public void shouldCloseHandleOnClose() {
+    // when
+    column.close();
+
+    // then
+    assertThat(column.handle.isOwningHandle()).isFalse();
+  }
+
+  @Test
+  public void shouldIterateOverAllKeysInOrder() {
+    // given
+    final SortedMap<Long, Boolean> collected = new TreeMap<>();
+    final Map<Long, Boolean> data = new HashMap<>();
+    data.put(1L, false);
+    data.put(2L, true);
+    data.put(3L, false);
+
+    // when
+    column.put(data);
+    for (final ZbColumnEntry<Long, Boolean> entry : column) {
+      collected.put(entry.getKey(), entry.getValue());
+    }
+
+    // then
+    assertThat(collected).containsExactly(entry(1L, false), entry(2L, true), entry(3L, false));
+  }
+
+  class Column extends ZbColumn<Long, Boolean> {
+    public Column(ZbRocksDb db, ColumnFamilyHandle handle) {
       super(
           db,
-          columnFamilyHandle,
-          new ExpandableArrayBuffer(),
-          new TripleSerializer<>(
-              IntSerializer.INSTANCE, LongSerializer.INSTANCE, new DirectBufferSerializer()),
-          new ExpandableArrayBuffer(),
-          new TestUnpackedObject.Serializer());
+          handle,
+          new UnsafeBuffer(new byte[Long.BYTES]),
+          LongSerializer.INSTANCE,
+          new UnsafeBuffer(new byte[1]),
+          BooleanSerializer.INSTANCE);
     }
   }
 }

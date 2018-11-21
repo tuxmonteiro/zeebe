@@ -13,11 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.zeebe.logstreams.rocksdb;
+package io.zeebe.logstreams.rocksdb.serializers;
 
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 
+/**
+ * Consider splitting into Serializer/Deserializer interfaces, with a Serde combined interface.
+ *
+ * @param <T> serializable type
+ */
 public interface Serializer<T> {
   int VARIABLE_LENGTH = -1;
 
@@ -29,6 +34,18 @@ public interface Serializer<T> {
 
   default int serialize(T value, MutableDirectBuffer dest) {
     return serialize(value, dest, 0);
+  }
+
+  default DirectBuffer serializeInto(
+      T value, MutableDirectBuffer dest, int offset, DirectBuffer view) {
+    final int length = serialize(value, dest, offset);
+    view.wrap(dest, offset, length);
+
+    return view;
+  }
+
+  default DirectBuffer serializeInto(T value, MutableDirectBuffer dest, DirectBuffer view) {
+    return serializeInto(value, dest, 0, view);
   }
 
   T deserialize(DirectBuffer source, int offset, int length);

@@ -1,5 +1,6 @@
 package io.zeebe.logstreams.rocksdb;
 
+import io.zeebe.logstreams.rocksdb.serializers.Serializer;
 import io.zeebe.logstreams.rocksdb.serializers.TupleSerializer;
 import io.zeebe.util.collection.Tuple;
 import org.agrona.MutableDirectBuffer;

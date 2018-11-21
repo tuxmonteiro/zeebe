@@ -15,7 +15,10 @@
  */
 package io.zeebe.logstreams.rocksdb;
 
+import io.zeebe.logstreams.rocksdb.serializers.Serializer;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.Stream;
@@ -24,10 +27,18 @@ import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.ColumnFamilyOptions;
 import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 
 public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoCloseable {
+  /**
+   * to extend the default options, see {@link
+   * ColumnFamilyOptions#ColumnFamilyOptions(ColumnFamilyOptions)}
+   */
+  public static final ColumnFamilyOptions DEFAULT_OPTIONS =
+      new ColumnFamilyOptions().optimizeUniversalStyleCompaction();
+
   protected final ZbRocksDb db;
   protected final ColumnFamilyHandle handle;
 
@@ -58,6 +69,24 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
     db.put(handle, serializeKey(key), serializeValue(value));
   }
 
+  public void put(K key, V value, ZbWriteBatch batch) {
+    batch.put(handle, serializeKey(key), serializeValue(value));
+  }
+
+  public void put(Map<K, V> map) {
+    try (final ZbWriteBatch batch = new ZbWriteBatch()) {
+      put(map, batch);
+    }
+  }
+
+  public void put(Map<K, V> map, ZbWriteBatch batch) {
+    for (final Entry<K, V> entry : map.entrySet()) {
+      put(entry.getKey(), entry.getValue(), batch);
+    }
+
+    db.write(batch);
+  }
+
   public V get(K key) {
     final int bytesRead = db.get(handle, serializeKey(key), valueBuffer);
 
@@ -72,7 +101,17 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
     db.delete(handle, serializeKey(key));
   }
 
-  public void delete(ZbColumnIteratorEntry entry) {
+  public void delete(K key, ZbWriteBatch batch) {
+    batch.delete(handle, serializeKey(key));
+  }
+
+  /**
+   * Exists primarily for deleting while iterating, since we already have a pre-serialized keyBuffer
+   * and don't need to serialize it again
+   *
+   * @param entry iterator entry to remove
+   */
+  void delete(ZbColumnIteratorEntry entry) {
     db.delete(handle, entry.getKeyBuffer());
   }
 
@@ -80,9 +119,13 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
     return db.exists(handle, serializeKey(key));
   }
 
+  /** NOTE: does not close the RocksIterator once finished. */
   @Override
   public Iterator<ZbColumnEntry<K, V>> iterator() {
-    return new ZbColumnIterator<>(this, db.newIterator(handle));
+    final ZbRocksIterator rocksIterator = db.newIterator(handle);
+    rocksIterator.seekToFirst();
+
+    return new ZbColumnIterator<>(this, rocksIterator);
   }
 
   public Iterator<ZbColumnEntry<K, V>> iterator(ZbRocksIterator iterator) {
@@ -101,11 +144,11 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
     return StreamSupport.stream(spliterator(), false);
   }
 
-  protected ZbRocksIterator newIterator() {
+  public ZbRocksIterator newIterator() {
     return db.newIterator(handle);
   }
 
-  protected ZbRocksIterator newIterator(ReadOptions options) {
+  public ZbRocksIterator newIterator(ReadOptions options) {
     return db.newIterator(handle, options);
   }
 
@@ -119,10 +162,7 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
   }
 
   public DirectBuffer serializeKey(K key) {
-    final int length = keySerializer.serialize(key, keyBuffer);
-    keyBufferView.wrap(keyBuffer, 0, length);
-
-    return keyBufferView;
+    return keySerializer.serializeInto(key, keyBuffer, keyBufferView);
   }
 
   public V deserializeValue(DirectBuffer source, int offset, int length) {
@@ -130,9 +170,6 @@ public class ZbColumn<K, V> implements Iterable<ZbColumnEntry<K, V>>, AutoClosea
   }
 
   public DirectBuffer serializeValue(V value) {
-    final int length = valueSerializer.serialize(value, valueBuffer);
-    valueBufferView.wrap(valueBuffer, 0, length);
-
-    return valueBufferView;
+    return valueSerializer.serializeInto(value, valueBuffer, valueBufferView);
   }
 }

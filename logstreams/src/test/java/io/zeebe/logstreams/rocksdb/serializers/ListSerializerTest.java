@@ -17,12 +17,12 @@ package io.zeebe.logstreams.rocksdb.serializers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import java.util.Arrays;
 import java.util.List;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
 
 public class ListSerializerTest {
@@ -34,7 +34,7 @@ public class ListSerializerTest {
     final Serializer<List<Long>> serializer = new ListSerializer<>(new LongSerializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(original, buffer);
+    final DirectBuffer serialized = serializer.serializeInto(original, buffer, new UnsafeBuffer());
     final List<Long> deserialized = serializer.deserialize(serialized);
 
     // then

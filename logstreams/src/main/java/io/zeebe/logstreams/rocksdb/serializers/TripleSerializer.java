@@ -15,7 +15,6 @@
  */
 package io.zeebe.logstreams.rocksdb.serializers;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.util.collection.Triple;
 import io.zeebe.util.collection.Tuple;
 import org.agrona.DirectBuffer;
@@ -36,12 +35,27 @@ public class TripleSerializer<L, M, R> extends Composite implements Serializer<T
     return tupleSerializer.serializePrefix(left, dest, offset);
   }
 
+  public DirectBuffer serializePrefixInto(
+      L left, MutableDirectBuffer dest, int offset, DirectBuffer view) {
+    return tupleSerializer.serializePrefixInto(left, dest, offset, view);
+  }
+
   public int serializePrefix(L left, M middle, MutableDirectBuffer dest, int offset) {
     return serializePrefix(getTuple(left, middle), dest, offset);
   }
 
+  public DirectBuffer serializePrefixInto(
+      L left, M middle, MutableDirectBuffer dest, int offset, DirectBuffer view) {
+    return serializePrefixInto(getTuple(left, middle), dest, offset, view);
+  }
+
   public int serializePrefix(Tuple<L, M> tuple, MutableDirectBuffer dest, int offset) {
     return tupleSerializer.serialize(tuple, dest, offset);
+  }
+
+  public DirectBuffer serializePrefixInto(
+      Tuple<L, M> tuple, MutableDirectBuffer dest, int offset, DirectBuffer view) {
+    return tupleSerializer.serializeInto(tuple, dest, offset, view);
   }
 
   @Override

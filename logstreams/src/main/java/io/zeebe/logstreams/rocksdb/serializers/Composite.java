@@ -15,10 +15,9 @@
  */
 package io.zeebe.logstreams.rocksdb.serializers;
 
-import static io.zeebe.logstreams.rocksdb.Serializer.VARIABLE_LENGTH;
 import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
+import static io.zeebe.logstreams.rocksdb.serializers.Serializer.VARIABLE_LENGTH;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import java.util.function.Consumer;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
@@ -41,18 +40,24 @@ public abstract class Composite {
 
   protected <T> int serializeMember(
       T value, Serializer<T> serializer, MutableDirectBuffer dest, int offset) {
-    final DirectBuffer serialized;
-    final int serializedLength = serializer.getLength();
+    int serializedLength = serializer.getLength();
 
     if (serializedLength != VARIABLE_LENGTH) {
-      serialized = serializer.serialize(value, dest, offset);
+      serializer.serialize(value, dest, offset);
     } else {
-      serialized = serializer.serialize(value, dest, offset + Integer.BYTES);
-      dest.putInt(offset, serialized.capacity(), STATE_BYTE_ORDER);
+      serializedLength = serializer.serialize(value, dest, offset + Integer.BYTES);
+      dest.putInt(offset, serializedLength, STATE_BYTE_ORDER);
       offset += Integer.BYTES;
     }
 
-    return offset + serialized.capacity();
+    return offset + serializedLength;
+  }
+
+  protected <T> DirectBuffer serializeMemberInto(T value, Serializer<T> serializer, MutableDirectBuffer dest, int offset, DirectBuffer view) {
+    final int length = serializeMember(value, serializer, dest, offset);
+    view.wrap(dest, offset, length);
+
+    return view;
   }
 
   protected <T> int deserializeMember(

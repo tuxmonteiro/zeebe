@@ -17,7 +17,6 @@ package io.zeebe.logstreams.rocksdb.serializers;
 
 import static io.zeebe.logstreams.rocksdb.ZeebeStateConstants.STATE_BYTE_ORDER;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
 

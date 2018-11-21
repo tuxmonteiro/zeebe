@@ -20,7 +20,7 @@ import java.util.List;
 import org.rocksdb.ColumnFamilyHandle;
 
 public class ZbState implements AutoCloseable {
-  private final List<ZbColumn> columns;
+  protected final List<ZbColumn> columns;
   protected final ZbRocksDb db;
 
   public ZbState(

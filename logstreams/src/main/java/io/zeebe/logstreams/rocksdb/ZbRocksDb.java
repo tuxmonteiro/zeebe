@@ -38,6 +38,7 @@ import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksObject;
+import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
 
 /**
@@ -188,6 +189,21 @@ public class ZbRocksDb extends RocksDB {
           valueOffset,
           valueLength,
           getNativeHandle(columnFamily));
+    } catch (RocksDBException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void write(WriteBatch batch) {
+    try (final WriteOptions options = new WriteOptions()) {
+      write(options, batch);
+    }
+  }
+
+  @Override
+  public void write(WriteOptions options, WriteBatch batch) {
+    try {
+      super.write(options, batch);
     } catch (RocksDBException e) {
       throw new RuntimeException(e);
     }
@@ -357,13 +373,9 @@ public class ZbRocksDb extends RocksDB {
   }
 
   public void batch(Consumer<ZbWriteBatch> batchConsumer) {
-    try (WriteOptions options = new WriteOptions();
-        ZbWriteBatch batch = new ZbWriteBatch()) {
-
+    try (ZbWriteBatch batch = new ZbWriteBatch()) {
       batchConsumer.accept(batch);
-      write(options, batch);
-    } catch (RocksDBException e) {
-      throw new RuntimeException(e);
+      write(batch);
     }
   }
 

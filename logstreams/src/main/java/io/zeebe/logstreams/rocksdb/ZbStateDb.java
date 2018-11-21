@@ -9,62 +9,70 @@ import org.rocksdb.RocksDBException;
 
 @SuppressWarnings("unchecked")
 public abstract class ZbStateDb implements AutoCloseable {
+
+  /** to extend, see {@link DBOptions#DBOptions(DBOptions)} */
+  public static final DBOptions DEFAULT_OPTIONS = new DBOptions().setFailIfOptionsFileError(true);
+
   private final List<ZbStateDescriptor> stateDescriptors;
-  private final List<ZbState> states;
-  private final DBOptions defaultOptions;
+  protected final List<ZbState> states;
+  private final DBOptions options;
+  private final ZbRocksDb db;
 
-  private ZbRocksDb db;
-  private DBOptions options;
+  public ZbStateDb(String path, boolean reopen) {
+    this(DEFAULT_OPTIONS, path, reopen);
+  }
 
-  public ZbStateDb() {
-    this.defaultOptions = createOptions();
+  public ZbStateDb(DBOptions options, String path, boolean reopen) {
+    this.options = new DBOptions(options).setCreateIfMissing(!reopen);
+
+    if (!reopen) {
+      this.options.setErrorIfExists(true);
+    }
 
     this.stateDescriptors = getStateDescriptors();
     assert this.stateDescriptors != null && !this.stateDescriptors.isEmpty()
         : "no states described for state database";
 
     this.states = new ArrayList<>(this.stateDescriptors.size());
-  }
 
-  public void open(String path, boolean reopen) {
-    final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
-    final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
-    final List<IndexRange> indexRanges = new ArrayList<>();
-    options = new DBOptions(defaultOptions).setCreateIfMissing(!reopen);
-
-    buildColumnFamilyDescriptorList(columnFamilyDescriptors, indexRanges);
-    openDatabase(path, columnFamilyDescriptors, columnFamilyHandles);
-    createStates(columnFamilyHandles, indexRanges);
+    this.db = open(path);
   }
 
   @Override
   public void close() {
     states.forEach(ZbState::close);
-
-    if (options != null) {
-      options.close();
-    }
-
-    if (db != null) {
-      db.close();
-    }
-
-    defaultOptions.close();
+    options.close();
+    db.close();
   }
 
-  protected abstract DBOptions createOptions();
+  protected ZbRocksDb open(String path) {
+    final List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
+    final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
+    final List<IndexRange> indexRanges = new ArrayList<>();
+    final ZbRocksDb db;
+
+    buildColumnFamilyDescriptorList(columnFamilyDescriptors, indexRanges);
+    db = openDatabase(path, columnFamilyDescriptors, columnFamilyHandles);
+    createStates(columnFamilyHandles, indexRanges);
+
+    return db;
+  }
 
   protected abstract List<ZbStateDescriptor> getStateDescriptors();
 
-  private void openDatabase(
+  private ZbRocksDb openDatabase(
       String path,
       List<ColumnFamilyDescriptor> columnFamilyDescriptors,
       List<ColumnFamilyHandle> columnFamilyHandles) {
+    final ZbRocksDb db;
+
     try {
       db = ZbRocksDb.open(options, path, columnFamilyDescriptors, columnFamilyHandles);
     } catch (RocksDBException e) {
       throw new RuntimeException(e);
     }
+
+    return db;
   }
 
   private void createStates(
@@ -73,7 +81,8 @@ public abstract class ZbStateDb implements AutoCloseable {
       final IndexRange range = indexRanges.get(i);
       final List<ColumnFamilyHandle> handles = columnFamilyHandles.subList(range.begin, range.end);
       final ZbStateDescriptor descriptor = stateDescriptors.get(i);
-      states.add(stateDescriptors.get(i).get(db, handles));
+
+      states.add(descriptor.get(db, handles));
     }
   }
 

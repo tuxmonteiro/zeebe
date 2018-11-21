@@ -5,13 +5,12 @@ import static io.zeebe.util.ByteArrayUtil.concat;
 import io.zeebe.logstreams.rocksdb.serializers.IntSerializer;
 import io.zeebe.logstreams.rocksdb.serializers.LongSerializer;
 import io.zeebe.logstreams.rocksdb.serializers.TupleSerializer;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.ColumnFamilyOptions;
 
 public class TestState extends ZbState {
   private final TupleSerializer<Long, Integer> keySerializer =
@@ -22,10 +21,11 @@ public class TestState extends ZbState {
   private final ExpandableArrayBuffer valueBuffer = new ExpandableArrayBuffer();
   private final TestUnpackedObject.Serializer valueSerializer = new TestUnpackedObject.Serializer();
 
+  private final TestColumn testColumn;
+
   public static List<ZbStateColumnDescriptor> getDescriptors(byte[] prefix) {
-    return Arrays.asList(
-        new ZbStateColumnDescriptor<>(
-            concat(prefix, TestColumn.NAME), new ColumnFamilyOptions(), TestState::newTestColumn));
+    return Collections.singletonList(
+        new ZbStateColumnDescriptor<>(concat(prefix, TestColumn.NAME), TestState::newTestColumn));
   }
 
   public TestState(
@@ -33,9 +33,15 @@ public class TestState extends ZbState {
       List<ColumnFamilyHandle> handles,
       List<ZbStateColumnDescriptor> columnDescriptors) {
     super(db, handles, columnDescriptors);
+
+    this.testColumn = (TestColumn) columns.get(0);
   }
 
   public TestColumn newTestColumn(ZbRocksDb db, ColumnFamilyHandle handle) {
     return new TestColumn(db, handle, keyBuffer, keySerializer, valueBuffer, valueSerializer);
+  }
+
+  public TestColumn getTestColumn() {
+    return testColumn;
   }
 }

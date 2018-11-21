@@ -17,13 +17,13 @@ package io.zeebe.logstreams.rocksdb.serializers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.logstreams.rocksdb.TestUnpackedObject;
 import io.zeebe.util.buffer.BufferUtil;
 import io.zeebe.util.collection.Triple;
 import org.agrona.DirectBuffer;
 import org.agrona.ExpandableArrayBuffer;
 import org.agrona.MutableDirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
 
 public class TripleSerializerTest {
@@ -43,7 +43,7 @@ public class TripleSerializerTest {
             new TestUnpackedObject.Serializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(original, buffer);
+    final DirectBuffer serialized = serializer.serializeInto(original, buffer, new UnsafeBuffer());
     final Triple<Long, DirectBuffer, TestUnpackedObject> deserialized =
         serializer.deserialize(serialized);
 
@@ -67,8 +67,9 @@ public class TripleSerializerTest {
             new TestUnpackedObject.Serializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(data, buffer, 0);
-    final DirectBuffer prefix = serializer.serializePrefix(1L, buffer, serialized.capacity());
+    final DirectBuffer serialized = serializer.serializeInto(data, buffer, 0, new UnsafeBuffer());
+    final DirectBuffer prefix =
+        serializer.serializePrefixInto(1L, buffer, serialized.capacity(), new UnsafeBuffer());
 
     // then
     assertThat(BufferUtil.startsWith(serialized, prefix)).isTrue();
@@ -90,10 +91,14 @@ public class TripleSerializerTest {
             new TestUnpackedObject.Serializer());
 
     // when
-    final DirectBuffer serialized = serializer.serialize(data, buffer, 0);
+    final DirectBuffer serialized = serializer.serializeInto(data, buffer, 0, new UnsafeBuffer());
     final DirectBuffer prefix =
-        serializer.serializePrefix(
-            1L, BufferUtil.wrapString("Max Mustermann"), buffer, serialized.capacity());
+        serializer.serializePrefixInto(
+            1L,
+            BufferUtil.wrapString("Max Mustermann"),
+            buffer,
+            serialized.capacity(),
+            new UnsafeBuffer());
 
     // then
     assertThat(BufferUtil.startsWith(serialized, prefix)).isTrue();

@@ -41,7 +41,7 @@ public class ZbColumnIteratorEntry<K, V> extends ZbColumnEntry<K, V> {
 
   public void setValueBuffer(DirectBuffer valueBuffer) {
     this.valueBuffer = valueBuffer;
-    setKey(valueBuffer, 0, valueBuffer.capacity());
+    setValue(valueBuffer, 0, valueBuffer.capacity());
   }
 
   public DirectBuffer getValueBuffer() {

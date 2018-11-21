@@ -15,7 +15,6 @@
  */
 package io.zeebe.logstreams.rocksdb.serializers;
 
-import io.zeebe.logstreams.rocksdb.Serializer;
 import io.zeebe.msgpack.UnpackedObject;
 import org.agrona.DirectBuffer;
 import org.agrona.MutableDirectBuffer;
