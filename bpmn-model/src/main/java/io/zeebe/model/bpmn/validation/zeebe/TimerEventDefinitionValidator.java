@@ -20,8 +20,8 @@ import io.zeebe.model.bpmn.instance.TimeCycle;
 import io.zeebe.model.bpmn.instance.TimeDate;
 import io.zeebe.model.bpmn.instance.TimeDuration;
 import io.zeebe.model.bpmn.instance.TimerEventDefinition;
+import io.zeebe.model.bpmn.util.time.Interval;
 import io.zeebe.model.bpmn.util.time.RepeatingInterval;
-import java.time.Duration;
 import java.time.format.DateTimeParseException;
 import org.camunda.bpm.model.xml.instance.ModelElementInstance;
 import org.camunda.bpm.model.xml.validation.ModelElementValidator;
@@ -82,7 +82,7 @@ public class TimerEventDefinitionValidator implements ModelElementValidator<Time
   private void validateTimeDuration(
       ValidationResultCollector validationResultCollector, TimeDuration timeDuration) {
     try {
-      Duration.parse(timeDuration.getTextContent());
+      Interval.parse(timeDuration.getTextContent());
     } catch (DateTimeParseException e) {
       validationResultCollector.addError(0, "Time duration is invalid");
     }
