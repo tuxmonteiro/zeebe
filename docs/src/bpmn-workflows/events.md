@@ -1,5 +1,7 @@
 # Events
 
+![workflow](/bpmn-workflows/events.png)
+
 Events in BPMN can be __thrown__ (i.e. sent), or __caught__ (i.e. received),
 respectively referred to as *throw* or *catch* events,
 e.g. `message throw event`, `timer catch event`.
